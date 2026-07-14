@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antigravity Backtester | Estrategia Unificada Wyckoff BTC/USDT</title>
+  <meta name="description" content="Dashboard premium de backtesting de la estrategia unificada Wyckoff + confluencia de RSI Estocástico sobre BTC/USDT usando la API pública de Binance y gráficos interactivos de TradingView.">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+  
+  <!-- Tailwind CSS v4 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  
+  <!-- Custom theme configuration and custom utilities in Tailwind -->
+  <style type="text/tailwindcss">
+    @theme {
+      --color-dark-bg: #06080f;          /* Pitch black for deep contrast */
+      --color-dark-sidebar: #0b0e17;     /* Very dark blue-gray for sidebar separation */
+      --color-dark-card: rgba(15, 22, 38, 0.7); /* Translucent cards */
+      --color-neon-cyan: #00e5ff;
+      --color-neon-emerald: #00e676;
+      --color-neon-rose: #ff1744;
+      --color-neon-purple: #b388ff;
+    }
+    
+    @utility glass-card {
+      background-color: var(--color-dark-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Scrollbars styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body class="bg-dark-bg text-gray-100 min-h-screen overflow-x-hidden font-['Outfit'] antialiased relative">
+
+  <!-- Background Glowing Orbs (Corrected Stacking Context: z-0 behind relative z-10 content) -->
+  <div class="absolute w-[600px] h-[600px] rounded-full bg-neon-cyan/15 blur-[150px] pointer-events-none top-0 right-0 z-0"></div>
+  <div class="absolute w-[600px] h-[600px] rounded-full bg-neon-purple/15 blur-[150px] pointer-events-none bottom-10 left-0 z-0"></div>
+  <div class="absolute w-[400px] h-[400px] rounded-full bg-neon-emerald/8 blur-[130px] pointer-events-none top-[35%] left-[25%] z-0"></div>
+
+  <!-- Strategy Switcher: choose between the main Wyckoff-unified system and a simpler VWAP + EMA21/50
+       crossover reference strategy, each with its own chart, sidebar and metrics. -->
+  <nav class="relative z-10 flex items-center gap-2 px-4 lg:px-8 pt-4">
+    <button type="button" data-strategy="wyckoff" class="strategy-tab-btn active-strategy-tab flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      Wyckoff Unificado
+    </button>
+    <button type="button" data-strategy="emacross" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      VWAP + Cruce EMA 21/30
+    </button>
+    <button type="button" data-strategy="eth" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      VWAP + EMA — ETH/USDT
+    </button>
+  </nav>
+
+  <div id="strategy-view-wyckoff" class="flex flex-col lg:flex-row min-h-screen relative z-10">
+
+    <!-- Sidebar: live signal state + key metrics (compact, always-on status) -->
+    <aside class="w-full lg:w-[340px] shrink-0 bg-dark-sidebar/60 border-b lg:border-b-0 lg:border-r border-white/8 p-4 lg:p-5 flex flex-col gap-5 lg:h-screen lg:overflow-y-auto">
+      <div class="flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan filter drop-shadow-[0_0_8px_rgba(0,229,255,0.6)]"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        <h1 class="text-lg font-bold tracking-wide bg-gradient-to-r from-white via-gray-100 to-neon-cyan bg-clip-text text-transparent">AG Backtester</h1>
+      </div>
+
+      <!-- Status Indicators -->
+      <div class="flex flex-col gap-2.5">
+        <div id="live-price-badge" class="flex items-center gap-2.5 text-xs bg-white/5 py-2 px-4 rounded-full border border-white/8 backdrop-blur-sm">
+          <span id="live-price-dot" class="w-2 h-2 rounded-full inline-block bg-gray-500"></span>
+          <span class="text-gray-400 font-medium">BTC/USDT en vivo</span>
+          <span id="live-price-value" class="font-bold tabular-nums text-gray-200 ml-auto">—</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-xs bg-white/5 py-2 px-4 rounded-full border border-white/8 backdrop-blur-sm">
+          <span id="status-dot" class="w-2.5 h-2.5 rounded-full inline-block"></span>
+          <span id="status-text" class="text-gray-300 font-medium">Conectando...</span>
+        </div>
+      </div>
+
+      <!-- Live Signal State: plain-language checklist of exactly which entry conditions are true
+           right now, plus SL/TP/unrealized P&L if a position is open -->
+      <section class="glass-card rounded-xl p-4 flex flex-col gap-3.5">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            <h2 class="text-xs font-bold tracking-tight text-white uppercase">Estado de la Señal</h2>
+            <span id="signal-live-dot" class="w-1.5 h-1.5 rounded-full inline-block bg-gray-600"></span>
+          </div>
+        </div>
+        <span id="signal-event-badge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/8 w-fit">Sin evento Wyckoff activo</span>
+        <div id="signal-checklist" class="grid grid-cols-1 gap-2 text-xs">
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-vwap-dot" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">VWAP: <span id="chk-vwap-text" class="text-gray-300 font-medium">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-ema-dot" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">EMA21/50: <span id="chk-ema-text" class="text-gray-300 font-medium">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-stoch-dot" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">Estocástico: <span id="chk-stoch-text" class="text-gray-300 font-medium">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-position-dot" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">Posición: <span id="chk-position-text" class="text-gray-300 font-medium">Sin posición</span></span>
+          </div>
+        </div>
+        <div id="signal-position-detail" class="hidden text-xs bg-black/30 rounded-lg p-3 border border-white/5 flex flex-col gap-1.5 font-mono">
+          <span>Entrada: <span id="pos-entry" class="text-gray-200">-</span></span>
+          <span>Stop Loss: <span id="pos-sl" class="text-neon-rose">-</span></span>
+          <span>Take Profit: <span id="pos-tp" class="text-neon-emerald">-</span></span>
+          <span>P&L flotante: <span id="pos-pnl" class="text-gray-200">-</span></span>
+        </div>
+      </section>
+
+      <!-- Metrics Summaries -->
+      <section class="grid grid-cols-2 gap-3">
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+            Retorno Total
+          </span>
+          <span id="metric-return" class="text-xl font-bold tracking-tight tabular-nums">0.00%</span>
+          <span id="metric-return-abs" class="text-[11px] text-gray-500 font-medium">$0.00 netas</span>
+        </div>
+
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            Acierto
+          </span>
+          <span id="metric-winrate" class="text-xl font-bold tracking-tight tabular-nums">0.0%</span>
+          <span class="text-[11px] text-gray-500 font-medium">En ganancia</span>
+        </div>
+
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+            Transacciones
+          </span>
+          <span id="metric-trades" class="text-xl font-bold tracking-tight tabular-nums text-white">0</span>
+          <span class="text-[11px] text-gray-500 font-medium">Finalizadas</span>
+        </div>
+
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>
+            Drawdown Máx.
+          </span>
+          <span id="metric-drawdown" class="text-xl font-bold tracking-tight tabular-nums">0.00%</span>
+          <span class="text-[11px] text-gray-500 font-medium">Caída máxima</span>
+        </div>
+
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5 col-span-2">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><line x1="22" x2="2" y1="5" y2="5"/><line x1="12" x2="12" y1="2" y2="22"/><path d="M5 5a7 7 0 0 0 14 0"/><path d="M19 17A7 7 0 1 1 5 17"/></svg>
+            Profit Factor
+          </span>
+          <span id="metric-factor" class="text-xl font-bold tracking-tight tabular-nums">0.00</span>
+          <span class="text-[11px] text-gray-500 font-medium">Ratio Ganancia vs Pérdida</span>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Main Dashboard Area: charts get the spotlight -->
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
+      <!-- Tab Navigation -->
+      <div class="flex items-center gap-2 border-b border-white/8">
+        <button type="button" data-tab="chart" class="tab-btn active-tab flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-neon-cyan text-white transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="10" x="7" y="9" rx="1"/><path d="M9 19v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v8"/><path d="M3 3v18h18"/></svg>
+          Gráfico de Precios
+        </button>
+        <button type="button" data-tab="equity" class="tab-btn flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          Equity Curve
+        </button>
+        <button type="button" data-tab="history" class="tab-btn flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          Historial de Operaciones
+        </button>
+      </div>
+
+      <!-- Tab Panel: Price Chart -->
+      <section data-tab-panel="chart" class="glass-card rounded-xl p-6 flex flex-col gap-5">
+        <div class="flex justify-between items-center flex-wrap gap-4">
+          <div class="flex items-center gap-2.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><path d="M9 5v4"/><rect width="4" height="10" x="7" y="9" rx="1"/><path d="M9 19v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v8"/><path d="M3 3v18h18"/></svg>
+            <h2 class="text-lg font-bold tracking-tight text-white">Gráfico de Precios y Señales de Entrada</h2>
+          </div>
+          <div class="flex gap-4 text-xs font-medium flex-wrap">
+            <div class="flex items-center gap-1.5 text-gray-400">
+              <span class="w-2.5 h-2.5 rounded-[2px] bg-neon-emerald inline-block"></span>
+              <span>Abrir/Cerrar en Ganancia</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-gray-400">
+              <span class="w-2.5 h-2.5 rounded-[2px] bg-neon-rose inline-block"></span>
+              <span>Abrir Short/Cerrar en Pérdida</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Price Candlestick Chart Container -->
+        <div class="relative w-full h-[680px] bg-black/50 rounded-lg overflow-hidden border border-white/5" id="main-chart">
+          <!-- Loading overlay for charts -->
+          <div id="main-overlay" class="absolute inset-0 bg-[#080b11]/90 flex flex-col justify-center items-center gap-4 z-50 backdrop-blur-[5px] transition-opacity duration-300">
+            <div class="w-10 h-10 border-3 border-neon-cyan/10 border-t-neon-cyan rounded-full animate-spin"></div>
+            <p id="overlay-message" class="text-sm text-gray-400 font-medium tracking-wide">Conectando...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab Panel: Equity Curve -->
+      <section data-tab-panel="equity" class="hidden glass-card rounded-xl p-6 flex-col gap-5">
+        <div class="flex items-center gap-2.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          <h2 class="text-lg font-bold tracking-tight text-white">Curva de Crecimiento del Capital (Equity Curve)</h2>
+        </div>
+        <div class="relative w-full h-[600px] bg-black/50 rounded-lg overflow-hidden border border-white/5" id="equity-chart"></div>
+      </section>
+
+      <!-- Tab Panel: Trade History -->
+      <section data-tab-panel="history" class="hidden glass-card rounded-xl p-6 flex-col gap-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold tracking-tight text-white">Historial de Operaciones</h2>
+        </div>
+        <div class="overflow-x-auto max-h-[650px]">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="sticky top-0 bg-[#121827] text-gray-300 font-semibold border-b border-white/10 z-10 select-none">
+                <th class="p-3">Dirección</th>
+                <th class="p-3">Entrada</th>
+                <th class="p-3">Evento Entrada</th>
+                <th class="p-3">Precio Entrada</th>
+                <th class="p-3">Salida</th>
+                <th class="p-3">Motivo Salida</th>
+                <th class="p-3">Precio Salida</th>
+                <th class="p-3">Resultado (P&L)</th>
+                <th class="p-3">Saldo de Cuenta</th>
+              </tr>
+            </thead>
+            <tbody id="trades-table-body" class="divide-y divide-white/5">
+              <!-- Dynamically populated via JS -->
+              <tr>
+                <td colspan="9" class="text-center text-gray-500 py-8">
+                  Ejecute una simulación para ver los resultados...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- Strategy 2: VWAP + EMA21/30 Crossover — a simpler, more classic trend-following approach kept
+       side-by-side for comparison. Validated against the app's own live window (~13 trades, current
+       ~1000-candle 4h dataset): 76.5% win rate, 31.40% return, 4.37% max drawdown — still a smaller
+       trade sample than the Wyckoff-unified strategy's, so it's presented as a reference/comparison view. -->
+  <div id="strategy-view-emacross" class="hidden flex-col lg:flex-row min-h-screen relative z-10">
+
+    <aside class="w-full lg:w-[340px] shrink-0 bg-dark-sidebar/60 border-b lg:border-b-0 lg:border-r border-white/8 p-4 lg:p-5 flex flex-col gap-5 lg:h-screen lg:overflow-y-auto">
+      <div class="flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple filter drop-shadow-[0_0_8px_rgba(179,136,255,0.6)]"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        <h1 class="text-lg font-bold tracking-wide bg-gradient-to-r from-white via-gray-100 to-neon-purple bg-clip-text text-transparent">VWAP + EMA Cross</h1>
+      </div>
+
+      <div class="flex flex-col gap-2.5">
+        <div id="live-price-badge-2" class="flex items-center gap-2.5 text-xs bg-white/5 py-2 px-4 rounded-full border border-white/8 backdrop-blur-sm">
+          <span id="live-price-dot-2" class="w-2 h-2 rounded-full inline-block bg-gray-500"></span>
+          <span class="text-gray-400 font-medium">BTC/USDT en vivo</span>
+          <span id="live-price-value-2" class="font-bold tabular-nums text-gray-200 ml-auto">—</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-xs bg-white/5 py-2 px-4 rounded-full border border-white/8 backdrop-blur-sm">
+          <span id="status-dot-2" class="w-2.5 h-2.5 rounded-full inline-block"></span>
+          <span id="status-text-2" class="text-gray-300 font-medium">Conectando...</span>
+        </div>
+      </div>
+
+      <div class="text-xs text-gray-400 bg-neon-rose/10 border border-neon-rose/20 rounded-lg p-3 leading-relaxed">
+Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan alineadas (las 3 líneas cruzándose entre sí) y mantiene la posición hasta el cruce opuesto o el SL/TP, sin estructura Wyckoff. Validada sobre los mismos datos que ves en pantalla (76.5% de acierto, 31.40% de retorno, 4.37% de drawdown), pero con menos operaciones históricas que la estrategia principal — se muestra aquí solo para comparar enfoques.
+      </div>
+
+      <!-- Live Signal State (simplified: just trend + VWAP + open position) -->
+      <section class="glass-card rounded-xl p-4 flex flex-col gap-3.5">
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <h2 class="text-xs font-bold tracking-tight text-white uppercase">Estado de la Señal</h2>
+          <span id="signal-live-dot-2" class="w-1.5 h-1.5 rounded-full inline-block bg-gray-600"></span>
+        </div>
+        <div class="grid grid-cols-1 gap-2 text-xs">
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-vwap-dot-2" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">VWAP: <span id="chk-vwap-text-2" class="text-gray-300 font-medium">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-ema-dot-2" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">EMA21/30: <span id="chk-ema-text-2" class="text-gray-300 font-medium">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-position-dot-2" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">Posición: <span id="chk-position-text-2" class="text-gray-300 font-medium">Sin posición</span></span>
+          </div>
+        </div>
+        <div id="signal-position-detail-2" class="hidden text-xs bg-black/30 rounded-lg p-3 border border-white/5 flex flex-col gap-1.5 font-mono">
+          <span>Entrada: <span id="pos-entry-2" class="text-gray-200">-</span></span>
+          <span>Stop Loss: <span id="pos-sl-2" class="text-neon-rose">-</span></span>
+          <span>Take Profit: <span id="pos-tp-2" class="text-neon-emerald">-</span></span>
+          <span>P&L flotante: <span id="pos-pnl-2" class="text-gray-200">-</span></span>
+        </div>
+      </section>
+
+      <!-- Metrics Summaries -->
+      <section class="grid grid-cols-2 gap-3">
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Retorno Total</span>
+          <span id="metric-return-2" class="text-xl font-bold tracking-tight tabular-nums">0.00%</span>
+          <span id="metric-return-abs-2" class="text-[11px] text-gray-500 font-medium">$0.00 netas</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Acierto</span>
+          <span id="metric-winrate-2" class="text-xl font-bold tracking-tight tabular-nums">0.0%</span>
+          <span class="text-[11px] text-gray-500 font-medium">En ganancia</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Transacciones</span>
+          <span id="metric-trades-2" class="text-xl font-bold tracking-tight tabular-nums text-white">0</span>
+          <span class="text-[11px] text-gray-500 font-medium">Finalizadas</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Drawdown Máx.</span>
+          <span id="metric-drawdown-2" class="text-xl font-bold tracking-tight tabular-nums">0.00%</span>
+          <span class="text-[11px] text-gray-500 font-medium">Caída máxima</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5 col-span-2">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Profit Factor</span>
+          <span id="metric-factor-2" class="text-xl font-bold tracking-tight tabular-nums">0.00</span>
+          <span class="text-[11px] text-gray-500 font-medium">Ratio Ganancia vs Pérdida</span>
+        </div>
+      </section>
+    </aside>
+
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
+      <div class="flex items-center gap-2 border-b border-white/8">
+        <button type="button" data-tab="chart" class="tab-btn active-tab flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-neon-purple text-white transition-colors">
+          Gráfico de Precios
+        </button>
+        <button type="button" data-tab="equity" class="tab-btn flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+          Equity Curve
+        </button>
+        <button type="button" data-tab="history" class="tab-btn flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+          Historial de Operaciones
+        </button>
+      </div>
+
+      <section data-tab-panel="chart" class="glass-card rounded-xl p-6 flex flex-col gap-5">
+        <div class="flex justify-between items-center flex-wrap gap-4">
+          <h2 class="text-lg font-bold tracking-tight text-white">Gráfico de Precios — VWAP + Cruce EMA21/30</h2>
+          <div class="flex gap-4 text-xs font-medium flex-wrap">
+            <div class="flex items-center gap-1.5 text-gray-400">
+              <span class="w-2.5 h-2.5 rounded-[2px] bg-neon-emerald inline-block"></span>
+              <span>Abrir/Cerrar en Ganancia</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-gray-400">
+              <span class="w-2.5 h-2.5 rounded-[2px] bg-neon-rose inline-block"></span>
+              <span>Abrir Short/Cerrar en Pérdida</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative w-full h-[680px] bg-black/50 rounded-lg overflow-hidden border border-white/5" id="main-chart-2">
+          <div id="main-overlay-2" class="absolute inset-0 bg-[#080b11]/90 flex flex-col justify-center items-center gap-4 z-50 backdrop-blur-[5px] transition-opacity duration-300">
+            <div class="w-10 h-10 border-3 border-neon-purple/10 border-t-neon-purple rounded-full animate-spin"></div>
+            <p id="overlay-message-2" class="text-sm text-gray-400 font-medium tracking-wide">Conectando...</p>
+          </div>
+        </div>
+      </section>
+
+      <section data-tab-panel="equity" class="hidden glass-card rounded-xl p-6 flex-col gap-5">
+        <h2 class="text-lg font-bold tracking-tight text-white">Curva de Crecimiento del Capital (Equity Curve)</h2>
+        <div class="relative w-full h-[600px] bg-black/50 rounded-lg overflow-hidden border border-white/5" id="equity-chart-2"></div>
+      </section>
+
+      <section data-tab-panel="history" class="hidden glass-card rounded-xl p-6 flex-col gap-4">
+        <h2 class="text-lg font-bold tracking-tight text-white">Historial de Operaciones</h2>
+        <div class="overflow-x-auto max-h-[650px]">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="sticky top-0 bg-[#121827] text-gray-300 font-semibold border-b border-white/10 z-10 select-none">
+                <th class="p-3">Dirección</th>
+                <th class="p-3">Entrada</th>
+                <th class="p-3">Evento Entrada</th>
+                <th class="p-3">Precio Entrada</th>
+                <th class="p-3">Salida</th>
+                <th class="p-3">Motivo Salida</th>
+                <th class="p-3">Precio Salida</th>
+                <th class="p-3">Resultado (P&L)</th>
+                <th class="p-3">Saldo de Cuenta</th>
+              </tr>
+            </thead>
+            <tbody id="trades-table-body-2" class="divide-y divide-white/5">
+              <tr>
+                <td colspan="9" class="text-center text-gray-500 py-8">
+                  Ejecute una simulación para ver los resultados...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+  </div>
+
+  <!-- Strategy 3: same VWAP + EMA triple-cross engine as Strategy 2, applied to ETH/USDT 4h instead
+       of BTC/USDT. (Originally built to fetch daily stock bars via Yahoo Finance, but three
+       different free CORS proxies all got blocked by Yahoo when tested live — switched to ETH on
+       Binance, reusing the same live-feed infrastructure already proven reliable for BTC.)
+       Validated the same way as every other parameter in this project (real ETH/USDT 4h data). -->
+  <div id="strategy-view-eth" class="hidden flex-col lg:flex-row min-h-screen relative z-10">
+
+    <aside class="w-full lg:w-[340px] shrink-0 bg-dark-sidebar/60 border-b lg:border-b-0 lg:border-r border-white/8 p-4 lg:p-5 flex flex-col gap-5 lg:h-screen lg:overflow-y-auto">
+      <div class="flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple filter drop-shadow-[0_0_8px_rgba(179,136,255,0.6)]"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        <h1 class="text-lg font-bold tracking-wide bg-gradient-to-r from-white via-gray-100 to-neon-purple bg-clip-text text-transparent">VWAP + EMA — ETH/USDT</h1>
+      </div>
+
+      <div class="flex flex-col gap-2.5">
+        <div id="live-price-badge-3" class="flex items-center gap-2.5 text-xs bg-white/5 py-2 px-4 rounded-full border border-white/8 backdrop-blur-sm">
+          <span id="live-price-dot-3" class="w-2 h-2 rounded-full inline-block bg-gray-500"></span>
+          <span class="text-gray-400 font-medium">ETH/USDT en vivo</span>
+          <span id="live-price-value-3" class="font-bold tabular-nums text-gray-200 ml-auto">—</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-xs bg-white/5 py-2 px-4 rounded-full border border-white/8 backdrop-blur-sm">
+          <span id="status-dot-3" class="w-2.5 h-2.5 rounded-full inline-block"></span>
+          <span id="status-text-3" class="text-gray-300 font-medium">Conectando...</span>
+        </div>
+      </div>
+
+      <div class="text-xs text-gray-400 bg-neon-rose/10 border border-neon-rose/20 rounded-lg p-3 leading-relaxed">
+        Misma lógica que "VWAP + Cruce EMA" (cruce triple EMA/VWAP, mantiene hasta el cruce opuesto o SL/TP), pero sobre ETH/USDT 4h en vez de BTC/USDT — con sus propios parámetros (EMA19/45, VWAP 55), validados por separado contra datos reales de ETH ya que los de BTC no funcionaban bien aquí.
+      </div>
+
+      <!-- Live Signal State (simplified: just trend + VWAP + open position) -->
+      <section class="glass-card rounded-xl p-4 flex flex-col gap-3.5">
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <h2 class="text-xs font-bold tracking-tight text-white uppercase">Estado de la Señal</h2>
+          <span id="signal-live-dot-3" class="w-1.5 h-1.5 rounded-full inline-block bg-gray-600"></span>
+        </div>
+        <div class="grid grid-cols-1 gap-2 text-xs">
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-vwap-dot-3" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">VWAP: <span id="chk-vwap-text-3" class="text-gray-300 font-medium">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-ema-dot-3" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">EMA19/45: <span id="chk-ema-text-3" class="text-gray-300 font-medium">—</span></span>
+          </div>
+          <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span id="chk-position-dot-3" class="w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+            <span class="text-gray-400">Posición: <span id="chk-position-text-3" class="text-gray-300 font-medium">Sin posición</span></span>
+          </div>
+        </div>
+        <div id="signal-position-detail-3" class="hidden text-xs bg-black/30 rounded-lg p-3 border border-white/5 flex flex-col gap-1.5 font-mono">
+          <span>Entrada: <span id="pos-entry-3" class="text-gray-200">-</span></span>
+          <span>Stop Loss: <span id="pos-sl-3" class="text-neon-rose">-</span></span>
+          <span>Take Profit: <span id="pos-tp-3" class="text-neon-emerald">-</span></span>
+          <span>P&L flotante: <span id="pos-pnl-3" class="text-gray-200">-</span></span>
+        </div>
+      </section>
+
+      <!-- Metrics Summaries -->
+      <section class="grid grid-cols-2 gap-3">
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Retorno Total</span>
+          <span id="metric-return-3" class="text-xl font-bold tracking-tight tabular-nums">0.00%</span>
+          <span id="metric-return-abs-3" class="text-[11px] text-gray-500 font-medium">$0.00 netas</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Acierto</span>
+          <span id="metric-winrate-3" class="text-xl font-bold tracking-tight tabular-nums">0.0%</span>
+          <span class="text-[11px] text-gray-500 font-medium">En ganancia</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Transacciones</span>
+          <span id="metric-trades-3" class="text-xl font-bold tracking-tight tabular-nums text-white">0</span>
+          <span class="text-[11px] text-gray-500 font-medium">Finalizadas</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Drawdown Máx.</span>
+          <span id="metric-drawdown-3" class="text-xl font-bold tracking-tight tabular-nums">0.00%</span>
+          <span class="text-[11px] text-gray-500 font-medium">Caída máxima</span>
+        </div>
+        <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5 col-span-2">
+          <span class="text-[11px] font-semibold text-gray-400 flex items-center gap-1.5">Profit Factor</span>
+          <span id="metric-factor-3" class="text-xl font-bold tracking-tight tabular-nums">0.00</span>
+          <span class="text-[11px] text-gray-500 font-medium">Ratio Ganancia vs Pérdida</span>
+        </div>
+      </section>
+    </aside>
+
+    <main class="flex-1 p-4 lg:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
+      <div class="flex items-center gap-2 border-b border-white/8">
+        <button type="button" data-tab="chart" class="tab-btn active-tab flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-neon-purple text-white transition-colors">
+          Gráfico de Precios
+        </button>
+        <button type="button" data-tab="equity" class="tab-btn flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+          Equity Curve
+        </button>
+        <button type="button" data-tab="history" class="tab-btn flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition-colors">
+          Historial de Operaciones
+        </button>
+      </div>
+
+      <section data-tab-panel="chart" class="glass-card rounded-xl p-6 flex flex-col gap-5">
+        <div class="flex justify-between items-center flex-wrap gap-4">
+          <h2 class="text-lg font-bold tracking-tight text-white">Gráfico de Precios — VWAP + Cruce EMA19/45 (ETH/USDT)</h2>
+          <div class="flex gap-4 text-xs font-medium flex-wrap">
+            <div class="flex items-center gap-1.5 text-gray-400">
+              <span class="w-2.5 h-2.5 rounded-[2px] bg-neon-emerald inline-block"></span>
+              <span>Abrir/Cerrar en Ganancia</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-gray-400">
+              <span class="w-2.5 h-2.5 rounded-[2px] bg-neon-rose inline-block"></span>
+              <span>Abrir Short/Cerrar en Pérdida</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative w-full h-[680px] bg-black/50 rounded-lg overflow-hidden border border-white/5" id="main-chart-3">
+          <div id="main-overlay-3" class="absolute inset-0 bg-[#080b11]/90 flex flex-col justify-center items-center gap-4 z-50 backdrop-blur-[5px] transition-opacity duration-300">
+            <div class="w-10 h-10 border-3 border-neon-purple/10 border-t-neon-purple rounded-full animate-spin"></div>
+            <p id="overlay-message-3" class="text-sm text-gray-400 font-medium tracking-wide">Conectando...</p>
+          </div>
+        </div>
+      </section>
+
+      <section data-tab-panel="equity" class="hidden glass-card rounded-xl p-6 flex-col gap-5">
+        <h2 class="text-lg font-bold tracking-tight text-white">Curva de Crecimiento del Capital (Equity Curve)</h2>
+        <div class="relative w-full h-[600px] bg-black/50 rounded-lg overflow-hidden border border-white/5" id="equity-chart-3"></div>
+      </section>
+
+      <section data-tab-panel="history" class="hidden glass-card rounded-xl p-6 flex-col gap-4">
+        <h2 class="text-lg font-bold tracking-tight text-white">Historial de Operaciones</h2>
+        <div class="overflow-x-auto max-h-[650px]">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="sticky top-0 bg-[#121827] text-gray-300 font-semibold border-b border-white/10 z-10 select-none">
+                <th class="p-3">Dirección</th>
+                <th class="p-3">Entrada</th>
+                <th class="p-3">Evento Entrada</th>
+                <th class="p-3">Precio Entrada</th>
+                <th class="p-3">Salida</th>
+                <th class="p-3">Motivo Salida</th>
+                <th class="p-3">Precio Salida</th>
+                <th class="p-3">Resultado (P&L)</th>
+                <th class="p-3">Saldo de Cuenta</th>
+              </tr>
+            </thead>
+            <tbody id="trades-table-body-3" class="divide-y divide-white/5">
+              <tr>
+                <td colspan="9" class="text-center text-gray-500 py-8">
+                  Ejecute una simulación para ver los resultados...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+  </div>
+
+  <!-- TradingView Lightweight Charts (Standalone version) -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- App scripts, split by concern (see js/main.js for the entry point). Classic scripts sharing
+       one global scope on purpose — plain static hosting, no bundler — so load order matters and
+       encodes the dependency graph documented at the top of each file. -->
+  <script src="js/config.js"></script>
+  <script src="js/indicators.js"></script>
+  <script src="js/simulator.js"></script>
+  <script src="js/strategy-wyckoff.js"></script>
+  <script src="js/strategy-emacross.js"></script>
+  <script src="js/binance-api.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/live-feed.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
