@@ -692,10 +692,22 @@ Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan al
   <script src="js/strategy-wyckoff.js"></script>
   <script src="js/strategy-emacross.js"></script>
   <script src="js/binance-api.js"></script>
-  <script src="js/charts.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/alerts.js"></script>
+  
+  <!-- Layer 3 DOM Utilities -->
+  <script src="js/ui/dom-utils.js"></script>
+  
+  <!-- Layer 2 Infrastructure -->
+  <script src="js/chart/chart-manager.js"></script>
   <script src="js/live-feed.js"></script>
-  <script src="js/main.js"></script>
+  
+  <!-- Layer 3 UI Components -->
+  <script src="js/ui/metrics-panel.js"></script>
+  <script src="js/ui/signal-panel.js"></script>
+  <script src="js/ui/trades-table.js"></script>
+  <script src="js/ui/strategy-view.js"></script>
+  <script src="js/alerts.js"></script>
+  
+  <!-- Layer 4 App Bootstrap -->
+  <script src="js/app/main.js"></script>
 </body>
 </html>
