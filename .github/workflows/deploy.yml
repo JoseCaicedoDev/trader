@@ -1,0 +1,60 @@
+# Deploy — Antigravity Backtester → GitHub Pages
+#
+# Triggers on every push to `main`. Deploys the static site (index.html + js/)
+# directly to GitHub Pages using the official Actions stack with no build step
+# required (vanilla HTML/JS, all dependencies from CDN).
+#
+# Required repository settings (one-time, do it in GitHub UI):
+#   Settings → Pages → Source: "GitHub Actions"
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+# Grant GITHUB_TOKEN the permissions needed to deploy to Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment runs at a time; cancel any in-progress run when a new
+# push arrives so the latest commit always wins.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # 1. Check out the full repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configure GitHub Pages (validates settings, sets base URL)
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      # 3. Upload the entire repo root as the Pages artifact.
+      #    `path: '.'` includes index.html, js/, wiki/, .agents/ — all static assets.
+      #    No build step needed: all JS is vanilla, LightweightCharts loads from CDN,
+      #    Binance API is called directly from the browser.
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      # 4. Deploy the artifact to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
