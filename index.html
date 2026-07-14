@@ -63,19 +63,52 @@
 
   <!-- Strategy Switcher: choose between the main Wyckoff-unified system and a simpler VWAP + EMA21/50
        crossover reference strategy, each with its own chart, sidebar and metrics. -->
-  <nav class="relative z-10 flex items-center gap-2 px-4 lg:px-8 pt-4">
-    <button type="button" data-strategy="wyckoff" class="strategy-tab-btn active-strategy-tab flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 transition-colors">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-      Wyckoff Unificado
-    </button>
-    <button type="button" data-strategy="emacross" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      VWAP + Cruce EMA 21/30
-    </button>
-    <button type="button" data-strategy="eth" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      VWAP + EMA — ETH/USDT
-    </button>
+  <nav class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 px-4 lg:px-8 pt-4">
+    <!-- Strategy Switcher (Left) -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <button type="button" data-strategy="wyckoff" class="strategy-tab-btn active-strategy-tab flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Wyckoff Unificado
+      </button>
+      <button type="button" data-strategy="emacross" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        VWAP + Cruce EMA 21/30
+      </button>
+      <button type="button" data-strategy="eth" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        VWAP + EMA — ETH/USDT
+      </button>
+    </div>
+
+    <!-- Global Alert Settings (Right) -->
+    <div class="flex items-center gap-3 bg-dark-sidebar/40 border border-white/8 rounded-xl px-4 py-2 backdrop-blur-sm">
+      <div class="flex items-center gap-2 text-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan animate-swing origin-top"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="text-gray-300 font-bold uppercase tracking-wide">Alertas:</span>
+        <button type="button" class="btn-request-notifications px-2.5 py-1 bg-white/5 text-gray-300 hover:text-white border border-white/8 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-1.5">
+          <span class="alerts-status-dot w-1.5 h-1.5 rounded-full inline-block bg-gray-500"></span>
+          <span>Permitir</span>
+        </button>
+      </div>
+
+      <div class="h-4 w-px bg-white/10"></div>
+
+      <!-- Sound Toggle -->
+      <div class="flex items-center gap-2 text-xs select-none">
+        <span class="text-gray-400">Sonido:</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="chk-alert-sound sr-only peer" checked>
+          <div class="w-7 h-3.5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-neon-cyan relative"></div>
+        </label>
+      </div>
+
+      <div class="h-4 w-px bg-white/10"></div>
+
+      <!-- Test alert button -->
+      <button type="button" class="btn-test-alert px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/8 text-gray-300 hover:text-white rounded-lg text-[10px] font-semibold transition-colors">
+        Probar
+      </button>
+    </div>
   </nav>
 
   <!-- Dynamic App container where strategy views will be instantiated -->
@@ -105,31 +138,6 @@
           </div>
         </div>
 
-        <!-- Alertas de Señales -->
-        <section class="glass-card rounded-xl p-4 flex flex-col gap-3">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="bell-icon"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-              <h2 class="text-xs font-bold tracking-tight text-white uppercase">Alertas de Señales</h2>
-            </div>
-            <span class="alerts-status-dot w-1.5 h-1.5 rounded-full inline-block bg-gray-500"></span>
-          </div>
-          <div class="flex flex-col gap-2 text-xs">
-            <button type="button" class="btn-request-notifications w-full py-2 px-3 font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
-              Permitir Alertas
-            </button>
-            <div class="flex items-center justify-between bg-black/30 rounded-lg p-2.5 border border-white/5">
-              <span class="text-gray-400">Sonido de alerta:</span>
-              <label class="relative inline-flex items-center cursor-pointer select-none">
-                <input type="checkbox" class="chk-alert-sound sr-only peer" checked>
-                <div class="chk-alert-switch w-8 h-4 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all relative"></div>
-              </label>
-            </div>
-            <button type="button" class="btn-test-alert w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 border border-white/8 text-gray-300 rounded-lg transition-colors text-[11px] font-semibold">
-              Probar Alerta (Test)
-            </button>
-          </div>
-        </section>
 
         <!-- Dynamic Strategy Description (Visible for comparisons) -->
         <div class="strategy-desc-container text-xs text-gray-400 bg-neon-rose/10 border border-neon-rose/20 rounded-lg p-3 leading-relaxed hidden">

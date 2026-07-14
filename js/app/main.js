@@ -90,16 +90,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const priceBadgeLabel = root.querySelector('.live-price-label');
     priceBadgeLabel.textContent = `${config.symbol.replace('USDT', '')}/USDT en vivo`;
 
-    // Request notification button accent styling
-    const reqBtn = root.querySelector('.btn-request-notifications');
-    const reqBtnClass = config.accentColor === 'cyan'
-      ? 'bg-neon-cyan/15 hover:bg-neon-cyan/25 border border-neon-cyan/25 text-neon-cyan'
-      : 'bg-neon-purple/15 hover:bg-neon-purple/25 border border-neon-purple/25 text-neon-purple';
-    reqBtn.className = `btn-request-notifications w-full py-2 px-3 ${reqBtnClass} font-bold rounded-lg transition-colors flex items-center justify-center gap-2`;
 
-    // Alert switch accent styling
-    const switchDiv = root.querySelector('.chk-alert-switch');
-    switchDiv.classList.add(config.accentColor === 'cyan' ? 'peer-checked:bg-neon-cyan' : 'peer-checked:bg-neon-purple');
 
     // Toggle specific strategy sections
     if (config.showStochastic) {

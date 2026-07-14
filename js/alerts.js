@@ -79,9 +79,19 @@ function updatePermissionUI() {
 
   buttons.forEach(btn => {
     if (btn) {
-      btn.textContent = btnText;
+      const textSpan = btn.querySelector('span:not(.alerts-status-dot)') || btn;
+      if (textSpan) {
+        textSpan.textContent = btnText;
+      }
       if (permission === 'granted') {
-        btn.className = 'w-full py-2 px-3 bg-neon-emerald/10 hover:bg-neon-emerald/20 border border-neon-emerald/25 text-neon-emerald font-bold rounded-lg transition-colors flex items-center justify-center gap-2';
+        btn.classList.add('bg-neon-emerald/10', 'text-neon-emerald', 'border-neon-emerald/25');
+        btn.classList.remove('bg-white/5', 'text-gray-300', 'border-white/8');
+      } else if (permission === 'denied') {
+        btn.classList.add('bg-neon-rose/10', 'text-neon-rose', 'border-neon-rose/25');
+        btn.classList.remove('bg-white/5', 'text-gray-300', 'border-white/8');
+      } else {
+        btn.classList.add('bg-white/5', 'text-gray-300', 'border-white/8');
+        btn.classList.remove('bg-neon-emerald/10', 'text-neon-emerald', 'border-neon-emerald/25', 'bg-neon-rose/10', 'text-neon-rose', 'border-neon-rose/25');
       }
     }
   });
