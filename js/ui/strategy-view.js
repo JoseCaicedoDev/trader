@@ -7,12 +7,14 @@
 
 class StrategyView {
   /**
-   * @param {string} rootId - DOM ID of the strategy view container
+   * @param {HTMLElement} viewRoot - Cloned template root DOM element
    * @param {ChartManager} chartManager - Associated ChartManager instance
+   * @param {string} accentColor - Accent color ('cyan' or 'purple')
    */
-  constructor(rootId, chartManager) {
-    this.root = document.getElementById(rootId);
+  constructor(viewRoot, chartManager, accentColor = 'cyan') {
+    this.root = viewRoot;
     this.chartManager = chartManager;
+    this.accentColor = accentColor;
     this.tabButtons = this.root.querySelectorAll('.tab-btn');
     this.panels = this.root.querySelectorAll('[data-tab-panel]');
     
@@ -30,8 +32,8 @@ class StrategyView {
         // Toggle button borders/active classes
         this.tabButtons.forEach(b => {
           const isActive = b === btn;
-          b.classList.toggle('border-neon-cyan', isActive && this.root.id !== 'strategy-view-emacross');
-          b.classList.toggle('border-neon-purple', isActive && this.root.id === 'strategy-view-emacross');
+          const activeBorderClass = this.accentColor === 'cyan' ? 'border-neon-cyan' : 'border-neon-purple';
+          b.classList.toggle(activeBorderClass, isActive);
           b.classList.toggle('text-white', isActive);
           b.classList.toggle('border-transparent', !isActive);
           b.classList.toggle('text-gray-400', !isActive);
@@ -53,16 +55,11 @@ class StrategyView {
   }
 
   /**
-   * Helper static method to manage global strategy switching (tabs at the top header).
+   * Helper static method to manage global strategy switching.
    * @param {Object} views - Mapping of view keys to StrategyView instances
    */
   static initStrategySwitcher(views) {
     const buttons = document.querySelectorAll('.strategy-tab-btn');
-    const viewElements = {
-      wyckoff: document.getElementById('strategy-view-wyckoff'),
-      emacross: document.getElementById('strategy-view-emacross'),
-      eth: document.getElementById('strategy-view-eth')
-    };
 
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -71,14 +68,16 @@ class StrategyView {
         // Update header switcher tab styles
         buttons.forEach(b => {
           const isActive = b.dataset.strategy === target;
+          const accentColor = views[b.dataset.strategy] ? views[b.dataset.strategy].accentColor : 'cyan';
           b.className = isActive
-            ? (target === 'wyckoff' ? CSS_CLASSES.STRATEGY_TAB_ACTIVE_WYCKOFF : CSS_CLASSES.STRATEGY_TAB_ACTIVE_CROSS)
+            ? (accentColor === 'cyan' ? CSS_CLASSES.STRATEGY_TAB_ACTIVE_WYCKOFF : CSS_CLASSES.STRATEGY_TAB_ACTIVE_CROSS)
             : CSS_CLASSES.STRATEGY_TAB_INACTIVE;
         });
 
         // Toggle root container visibility
-        Object.entries(viewElements).forEach(([key, el]) => {
-          if (el) {
+        Object.entries(views).forEach(([key, viewInstance]) => {
+          if (viewInstance && viewInstance.root) {
+            const el = viewInstance.root;
             el.classList.toggle('hidden', key !== target);
             el.classList.toggle('flex', key === target);
           }

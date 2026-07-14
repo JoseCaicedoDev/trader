@@ -6,32 +6,34 @@
 
 class SignalPanel {
   /**
-   * @param {string} suffix - DOM ID suffix ('', '-2', or '-3') to bind elements
+   * @param {HTMLElement} viewRoot - Cloned template root DOM element
    * @param {string} type - Strategy type ('wyckoff' or 'emacross')
+   * @param {boolean} isEthTimeframe - Whether to show 2 decimal places for ETH price
    */
-  constructor(suffix = '', type = 'wyckoff') {
-    this.suffix = suffix;
+  constructor(viewRoot, type = 'wyckoff', isEthTimeframe = false) {
+    this.viewRoot = viewRoot;
     this.type = type;
+    this.isEthTimeframe = isEthTimeframe;
 
     // Common checklist items
-    this.vwapDot = document.getElementById(`chk-vwap-dot${suffix}`);
-    this.vwapText = document.getElementById(`chk-vwap-text${suffix}`);
-    this.emaDot = document.getElementById(`chk-ema-dot${suffix}`);
-    this.emaText = document.getElementById(`chk-ema-text${suffix}`);
-    this.posDot = document.getElementById(`chk-position-dot${suffix}`);
-    this.posText = document.getElementById(`chk-position-text${suffix}`);
-    this.posDetail = document.getElementById(`signal-position-detail${suffix}`);
+    this.vwapDot = viewRoot.querySelector('.chk-vwap-dot');
+    this.vwapText = viewRoot.querySelector('.chk-vwap-text');
+    this.emaDot = viewRoot.querySelector('.chk-ema-dot');
+    this.emaText = viewRoot.querySelector('.chk-ema-text');
+    this.posDot = viewRoot.querySelector('.chk-position-dot');
+    this.posText = viewRoot.querySelector('.chk-position-text');
+    this.posDetail = viewRoot.querySelector('.signal-position-detail');
 
     // Strategy 1 specific items
-    this.eventBadge = document.getElementById(`signal-event-badge`);
-    this.stochDot = document.getElementById(`chk-stoch-dot`);
-    this.stochText = document.getElementById(`chk-stoch-text`);
+    this.eventBadge = viewRoot.querySelector('.signal-event-badge');
+    this.stochDot = viewRoot.querySelector('.chk-stoch-dot');
+    this.stochText = viewRoot.querySelector('.chk-stoch-text');
 
     // Strategy 1 position details
-    this.posEntry = document.getElementById(`pos-entry${suffix}`);
-    this.posSl = document.getElementById(`pos-sl${suffix}`);
-    this.posTp = document.getElementById(`pos-tp${suffix}`);
-    this.posPnl = document.getElementById(`pos-pnl${suffix}`);
+    this.posEntry = viewRoot.querySelector('.pos-entry');
+    this.posSl = viewRoot.querySelector('.pos-sl');
+    this.posTp = viewRoot.querySelector('.pos-tp');
+    this.posPnl = viewRoot.querySelector('.pos-pnl');
   }
 
   /**
@@ -46,7 +48,7 @@ class SignalPanel {
       if (state.vwap !== null) {
         this.vwapDot.className = state.aboveVwap ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
         this.vwapText.textContent = (state.aboveVwap ? 'Precio arriba (alcista)' : 'Precio abajo (bajista)') +
-          ' — $' + formatPrice(state.vwap, this.suffix === '-3' ? 2 : 0);
+          ' — $' + formatPrice(state.vwap, this.isEthTimeframe ? 2 : 0);
       } else {
         this.vwapDot.className = CSS_CLASSES.DOT_NEUTRAL;
         this.vwapText.textContent = 'Calculando...';
@@ -59,7 +61,7 @@ class SignalPanel {
         this.emaDot.className = state.bullishStructure ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
         if (this.type === 'wyckoff') {
           this.emaText.textContent = state.bullishStructure ? 'Estructura alcista (21>50)' : 'Estructura bajista (21<50)';
-        } else if (this.suffix === '-3') {
+        } else if (this.isEthTimeframe) {
           this.emaText.textContent = state.bullishStructure ? 'EMA19 > EMA45 (alcista)' : 'EMA19 < EMA45 (bajista)';
         } else {
           this.emaText.textContent = state.bullishStructure ? 'EMA21 > EMA30 (alcista)' : 'EMA21 < EMA30 (bajista)';

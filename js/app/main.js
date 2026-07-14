@@ -3,78 +3,198 @@
 //
 // Wires up all Layer 2 (Infrastructure) and Layer 3 (UI Presentation) components,
 // orchestrates initial backtests, handles live WebSocket events, and updates UI state.
+// Dynamically generates views from HTML5 template based on STRATEGIES_CONFIG.
 
-let btcChart1, btcChart2, ethChart3;
-let btcMetrics1, btcMetrics2, ethMetrics3;
-let btcSignal1, btcSignal2, ethSignal3;
-let btcTable1, btcTable2, ethTable3;
-let wyckoffView, emacrossView, ethView;
+const STRATEGIES_CONFIG = [
+  {
+    key: 'wyckoff',
+    title: 'Wyckoff Unificada',
+    symbol: 'BTCUSDT',
+    timeframe: '4h',
+    accentColor: 'cyan',
+    iconSvg: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+    isEthTimeframe: false,
+    strategyType: 'wyckoff',
+    strategyParams: STRATEGY_PARAMS,
+    runStrategy: runWyckoffUnifiedStrategy,
+    showStochastic: true,
+    description: null
+  },
+  {
+    key: 'emacross',
+    title: 'VWAP + Cruce EMA 21/30',
+    symbol: 'BTCUSDT',
+    timeframe: '4h',
+    accentColor: 'purple',
+    iconSvg: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
+    isEthTimeframe: false,
+    strategyType: 'emacross',
+    strategyParams: STRATEGY2_PARAMS,
+    runStrategy: runEmaCrossStrategy,
+    showStochastic: false,
+    description: 'Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan alineadas (las 3 líneas cruzándose entre sí) y mantiene la posición hasta el cruce opuesto o el SL/TP, sin estructura Wyckoff. Validada sobre los mismos datos que ves en pantalla (76.5% de acierto, 31.40% de retorno, 4.37% de drawdown), pero con menos operaciones históricas que la estrategia principal — se muestra aquí solo para comparar enfoques.'
+  },
+  {
+    key: 'eth',
+    title: 'VWAP + EMA — ETH/USDT',
+    symbol: 'ETHUSDT',
+    timeframe: '4h',
+    accentColor: 'purple',
+    iconSvg: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
+    isEthTimeframe: true,
+    strategyType: 'emacross',
+    strategyParams: STRATEGY3_PARAMS,
+    runStrategy: runEmaCrossStrategy,
+    showStochastic: false,
+    description: 'Misma lógica que "VWAP + Cruce EMA" (cruce triple EMA/VWAP, mantiene hasta el cruce opuesto o SL/TP), pero sobre ETH/USDT 4h en vez de BTC/USDT — con sus propios parámetros (EMA19/45, VWAP 55), validados por separado contra datos reales de ETH ya que los de BTC no funcionaban bien aquí.'
+  }
+];
 
-let btcFeed, ethFeed;
-let lastLoadedCandles = null;
-let lastLoadedCandlesEth = null;
-let isBtcRunning = false;
-let isEthRunning = false;
-
-let lastBtcUpdate = 0;
-let lastEthUpdate = 0;
+const views = {};
+const feeds = {};
 
 window.addEventListener('DOMContentLoaded', async () => {
-  // 1. Initialize Infrastructure Components (Chart Managers)
-  btcChart1 = new ChartManager('main-chart', 'equity-chart', '#00e5ff');
-  btcChart2 = new ChartManager('main-chart-2', 'equity-chart-2', '#b388ff');
-  ethChart3 = new ChartManager('main-chart-3', 'equity-chart-3', '#b388ff');
+  const appContainer = document.getElementById('app-container');
+  const template = document.getElementById('strategy-view-template');
 
-  // 2. Initialize UI Presentation Panels
-  btcMetrics1 = new MetricsPanel('');
-  btcMetrics2 = new MetricsPanel('-2');
-  ethMetrics3 = new MetricsPanel('-3');
+  if (!appContainer || !template) {
+    console.error('El contenedor de la aplicación o la plantilla no se encontraron.');
+    return;
+  }
 
-  btcSignal1 = new SignalPanel('', 'wyckoff');
-  btcSignal2 = new SignalPanel('-2', 'emacross');
-  ethSignal3 = new SignalPanel('-3', 'emacross');
+  // 1. Build and Mount Strategy Views from HTML5 Template
+  STRATEGIES_CONFIG.forEach(config => {
+    const clone = template.content.cloneNode(true);
+    const root = clone.querySelector('.strategy-view');
 
-  btcTable1 = new TradesTable('trades-table-body');
-  btcTable2 = new TradesTable('trades-table-body-2');
-  ethTable3 = new TradesTable('trades-table-body-3');
+    root.id = `strategy-view-${config.key}`;
+    if (config.key === 'wyckoff') {
+      root.classList.remove('hidden');
+      root.classList.add('flex');
+    }
 
-  // 3. Initialize Strategy View Controllers (Tabs & Sizer)
-  wyckoffView = new StrategyView('strategy-view-wyckoff', btcChart1);
-  emacrossView = new StrategyView('strategy-view-emacross', btcChart2);
-  ethView = new StrategyView('strategy-view-eth', ethChart3);
+    // Set title and colors
+    const titleEl = root.querySelector('.strategy-title');
+    titleEl.textContent = config.title;
+    titleEl.classList.add(config.accentColor === 'cyan' ? 'from-white' : 'from-white');
+    titleEl.classList.add(config.accentColor === 'cyan' ? 'via-gray-100' : 'via-gray-100');
+    titleEl.classList.add(config.accentColor === 'cyan' ? 'to-neon-cyan' : 'to-neon-purple');
 
-  // Bind top-level strategy tabs switcher
-  StrategyView.initStrategySwitcher({
-    wyckoff: wyckoffView,
-    emacross: emacrossView,
-    eth: ethView
+    // Customize icon
+    const iconEl = root.querySelector('.strategy-icon');
+    iconEl.innerHTML = config.iconSvg;
+    iconEl.classList.add(config.accentColor === 'cyan' ? 'text-neon-cyan' : 'text-neon-purple');
+    iconEl.classList.add(config.accentColor === 'cyan' ? 'drop-shadow-[0_0_8px_rgba(0,229,255,0.6)]' : 'drop-shadow-[0_0_8px_rgba(179,136,255,0.6)]');
+
+    // Price badge label
+    const priceBadgeLabel = root.querySelector('.live-price-label');
+    priceBadgeLabel.textContent = `${config.symbol.replace('USDT', '')}/USDT en vivo`;
+
+    // Request notification button accent styling
+    const reqBtn = root.querySelector('.btn-request-notifications');
+    const reqBtnClass = config.accentColor === 'cyan'
+      ? 'bg-neon-cyan/15 hover:bg-neon-cyan/25 border border-neon-cyan/25 text-neon-cyan'
+      : 'bg-neon-purple/15 hover:bg-neon-purple/25 border border-neon-purple/25 text-neon-purple';
+    reqBtn.className = `btn-request-notifications w-full py-2 px-3 ${reqBtnClass} font-bold rounded-lg transition-colors flex items-center justify-center gap-2`;
+
+    // Alert switch accent styling
+    const switchDiv = root.querySelector('.chk-alert-switch');
+    switchDiv.classList.add(config.accentColor === 'cyan' ? 'peer-checked:bg-neon-cyan' : 'peer-checked:bg-neon-purple');
+
+    // Toggle specific strategy sections
+    if (config.showStochastic) {
+      root.querySelector('.chk-stoch-row').classList.remove('hidden');
+      root.querySelector('.signal-event-badge').classList.remove('hidden');
+    }
+
+    if (config.description) {
+      root.querySelector('.strategy-desc-container').classList.remove('hidden');
+      root.querySelector('.strategy-desc').textContent = config.description;
+    }
+
+    // Set tab border accent colors
+    const tabBtns = root.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+      if (btn.dataset.tab === 'chart') {
+        btn.classList.add(config.accentColor === 'cyan' ? 'border-neon-cyan' : 'border-neon-purple');
+      }
+    });
+
+    // Spinner color accent
+    const spinnerEl = root.querySelector('.overlay-spinner');
+    spinnerEl.className = `overlay-spinner w-10 h-10 border-3 ${config.accentColor === 'cyan' ? 'border-neon-cyan/10 border-t-neon-cyan' : 'border-neon-purple/10 border-t-neon-purple'} rounded-full animate-spin`;
+
+    // Append to DOM
+    appContainer.appendChild(clone);
+
+    // Retrieve mounted root element to bind classes correctly
+    const domRoot = document.getElementById(root.id);
+
+    // Instantiate Layer 2/3 managers relative to the newly added view root
+    const chartManager = new ChartManager(
+      domRoot.querySelector('.main-chart'),
+      domRoot.querySelector('.equity-chart'),
+      config.accentColor === 'cyan' ? '#00e5ff' : '#b388ff'
+    );
+
+    const metricsPanel = new MetricsPanel(domRoot);
+    const signalPanel = new SignalPanel(domRoot, config.strategyType, config.isEthTimeframe);
+    const tradesTable = new TradesTable(domRoot);
+
+    const strategyView = new StrategyView(domRoot, chartManager, config.accentColor);
+
+    views[config.key] = {
+      config,
+      root: domRoot,
+      chartManager,
+      metricsPanel,
+      signalPanel,
+      tradesTable,
+      strategyView,
+      accentColor: config.accentColor,
+      lastCandles: null,
+      isRunning: false,
+      lastUpdate: 0
+    };
   });
+
+  // 2. Initialize top-level strategy views switcher
+  const switcherMap = {};
+  Object.keys(views).forEach(k => {
+    switcherMap[k] = views[k].strategyView;
+  });
+  StrategyView.initStrategySwitcher(switcherMap);
+
+  // 3. Initialize alert manager bindings for all newly generated checkbox and button classes
+  initAlertManager();
 
   // 4. Run Initial Backtests
-  await runBtcFlow();
-  await runEthFlow();
+  await Promise.all([
+    runBacktestFlow('wyckoff'),
+    runBacktestFlow('emacross'),
+    runBacktestFlow('eth')
+  ]);
 
-  // 5. Connect WebSocket Feeds
-  setupBtcLiveFeed();
-  setupEthLiveFeed();
+  // 5. Connect WebSocket Feeds (linked to one or more strategy views)
+  setupLiveFeed('BTCUSDT', ['wyckoff', 'emacross']);
+  setupLiveFeed('ETHUSDT', ['eth']);
 });
 
-// BTC/USDT Backtest Orchestration Flow
-async function runBtcFlow() {
-  if (isBtcRunning) return;
-  isBtcRunning = true;
+// Generic Backtest Flow Runner
+async function runBacktestFlow(key) {
+  const view = views[key];
+  if (!view || view.isRunning) return;
+  view.isRunning = true;
 
   try {
-    btcMetrics1.setLoading(true, 'Conectando con Binance API...');
-    btcMetrics2.setLoading(true, 'Conectando con Binance API...');
+    view.metricsPanel.setLoading(true, 'Conectando con Binance API...');
 
-    const rawData = await fetchBinanceKlines('BTCUSDT', '4h', 1000);
+    const rawData = await fetchBinanceKlines(view.config.symbol, view.config.timeframe, 1000);
     if (!rawData || rawData.length === 0) {
       throw new Error('No se recibieron datos de la API de Binance.');
     }
 
-    btcMetrics1.setLoading(true, 'Calculando indicadores y ejecutando estrategia...');
-    btcMetrics2.setLoading(true, 'Calculando indicadores y ejecutando estrategia...');
+    view.metricsPanel.setLoading(true, 'Calculando indicadores y ejecutando estrategia...');
 
     const candles = rawData.map(c => ({
       time: Math.floor(c[0] / 1000),
@@ -85,191 +205,97 @@ async function runBtcFlow() {
       volume: parseFloat(c[5])
     }));
     candles.sort((a, b) => a.time - b.time);
-    lastLoadedCandles = candles;
+    view.lastCandles = candles;
 
-    // Strategy 1: Wyckoff
-    const res1 = runWyckoffUnifiedStrategy(candles, STRATEGY_PARAMS, INITIAL_CAPITAL, FEE_PERCENT);
-    btcChart1.render(candles, res1);
-    btcMetrics1.update(res1, INITIAL_CAPITAL);
-    btcTable1.render(res1.trades, res1.eventLabels);
-    btcSignal1.update(res1.currentState);
+    const res = view.config.runStrategy(candles, view.config.strategyParams, INITIAL_CAPITAL, FEE_PERCENT);
+    view.chartManager.render(candles, res);
+    view.metricsPanel.update(res, INITIAL_CAPITAL);
+    view.tradesTable.render(res.trades, res.eventLabels);
+    view.signalPanel.update(res.currentState);
 
-    // Strategy 2: EMA Cross
-    const res2 = runEmaCrossStrategy(candles, STRATEGY2_PARAMS, INITIAL_CAPITAL, FEE_PERCENT);
-    btcChart2.render(candles, res2);
-    btcMetrics2.update(res2, INITIAL_CAPITAL);
-    btcTable2.render(res2.trades, res2.eventLabels);
-    btcSignal2.update(res2.currentState);
-
-    btcMetrics1.setLoading(false);
-    btcMetrics2.setLoading(false);
+    view.metricsPanel.setLoading(false);
   } catch (error) {
     console.error(error);
-    btcMetrics1.setLoading(false);
-    btcMetrics2.setLoading(false);
-    btcMetrics1.setError(error.message);
+    view.metricsPanel.setLoading(false);
+    view.metricsPanel.setError(error.message);
   } finally {
-    isBtcRunning = false;
+    view.isRunning = false;
   }
 }
 
-// ETH/USDT Backtest Orchestration Flow
-async function runEthFlow() {
-  if (isEthRunning) return;
-  isEthRunning = true;
+// Live WebSocket feed manager
+function setupLiveFeed(symbol, configKeys) {
+  const feed = new LiveFeed(symbol, '4h');
+  feeds[symbol] = feed;
 
-  try {
-    ethMetrics3.setLoading(true, 'Conectando con Binance API...');
-
-    const rawData = await fetchBinanceKlines('ETHUSDT', '4h', 1000);
-    if (!rawData || rawData.length === 0) {
-      throw new Error('No se recibieron datos de la API de Binance.');
-    }
-
-    ethMetrics3.setLoading(true, 'Calculando indicadores y ejecutando estrategia...');
-
-    const candles = rawData.map(c => ({
-      time: Math.floor(c[0] / 1000),
-      open: parseFloat(c[1]),
-      high: parseFloat(c[2]),
-      low: parseFloat(c[3]),
-      close: parseFloat(c[4]),
-      volume: parseFloat(c[5])
-    }));
-    candles.sort((a, b) => a.time - b.time);
-    lastLoadedCandlesEth = candles;
-
-    // Strategy 3: ETH EMA Cross
-    const res3 = runEmaCrossStrategy(candles, STRATEGY3_PARAMS, INITIAL_CAPITAL, FEE_PERCENT);
-    ethChart3.render(candles, res3);
-    ethMetrics3.update(res3, INITIAL_CAPITAL);
-    ethTable3.render(res3.trades, res3.eventLabels);
-    ethSignal3.update(res3.currentState);
-
-    ethMetrics3.setLoading(false);
-  } catch (error) {
-    console.error(error);
-    ethMetrics3.setLoading(false);
-    ethMetrics3.setError(error.message);
-  } finally {
-    isEthRunning = false;
-  }
-}
-
-// Live feed listeners for BTCUSDT
-function setupBtcLiveFeed() {
-  btcFeed = new LiveFeed('BTCUSDT', '4h');
-
-  const liveDot = document.getElementById('live-price-dot');
-  const liveDot2 = document.getElementById('live-price-dot-2');
-  const liveVal = document.getElementById('live-price-value');
-  const liveVal2 = document.getElementById('live-price-value-2');
-
-  btcFeed.addEventListener('open', () => {
+  feed.addEventListener('open', () => {
     const activeClass = 'w-2 h-2 rounded-full inline-block bg-neon-emerald shadow-[0_0_6px_#00e676] animate-pulse';
-    if (liveDot) liveDot.className = activeClass;
-    if (liveDot2) liveDot2.className = activeClass;
+    configKeys.forEach(key => {
+      const view = views[key];
+      if (view) {
+        const dot = view.root.querySelector('.live-price-dot');
+        if (dot) dot.className = activeClass;
+      }
+    });
   });
 
-  btcFeed.addEventListener('price', (e) => {
+  feed.addEventListener('price', (e) => {
     const kline = e.detail;
-    
-    // Update charts
-    btcChart1.updateLiveCandle(kline);
-    btcChart2.updateLiveCandle(kline);
+    const priceStr = '$' + formatPrice(kline.close, symbol === 'ETHUSDT' ? 2 : 0);
 
-    // Update headers
-    const priceStr = '$' + formatPrice(kline.close);
-    if (liveVal) liveVal.textContent = priceStr;
-    if (liveVal2) liveVal2.textContent = priceStr;
+    configKeys.forEach(key => {
+      const view = views[key];
+      if (!view) return;
 
-    // Throttle signal updates to 1.5s
-    const now = Date.now();
-    if (now - lastBtcUpdate < 1500) return;
-    lastBtcUpdate = now;
+      // Update chart live candle
+      view.chartManager.updateLiveCandle(kline);
 
-    if (lastLoadedCandles && !isBtcRunning) {
-      const tempCandles = [...lastLoadedCandles, kline];
+      // Update price display badge
+      const valEl = view.root.querySelector('.live-price-value');
+      if (valEl) valEl.textContent = priceStr;
 
-      // Wyckoff State
-      const res1 = runWyckoffUnifiedStrategy(tempCandles, STRATEGY_PARAMS, INITIAL_CAPITAL, FEE_PERCENT);
-      btcSignal1.update(res1.currentState);
-      const signalLiveDot = document.getElementById('signal-live-dot');
-      if (signalLiveDot) signalLiveDot.className = CSS_CLASSES.DOT_SIGNAL_ACTIVE_WYCKOFF;
-      if (res1.currentState.signal) {
-        checkAndTriggerAlert('BTCUSDT', 'wyckoff', res1.currentState.price, res1.currentState.signal, kline.time, res1.currentState.lastEvent);
+      // Throttle signal updates to 1.5s
+      const now = Date.now();
+      if (now - view.lastUpdate < 1500) return;
+      view.lastUpdate = now;
+
+      if (view.lastCandles && !view.isRunning) {
+        const tempCandles = [...view.lastCandles, kline];
+        const res = view.config.runStrategy(tempCandles, view.config.strategyParams, INITIAL_CAPITAL, FEE_PERCENT);
+        view.signalPanel.update(res.currentState);
+
+        const sigDot = view.root.querySelector('.signal-live-dot');
+        if (sigDot) {
+          sigDot.className = view.config.accentColor === 'cyan'
+            ? CSS_CLASSES.DOT_SIGNAL_ACTIVE_WYCKOFF
+            : CSS_CLASSES.DOT_SIGNAL_ACTIVE_CROSS;
+        }
+
+        if (res.currentState.signal) {
+          const eventType = view.config.strategyType === 'wyckoff'
+            ? res.currentState.lastEvent
+            : (res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
+          checkAndTriggerAlert(symbol, key, res.currentState.price, res.currentState.signal, kline.time, eventType);
+        }
       }
+    });
+  });
 
-      // EMA Cross State
-      const res2 = runEmaCrossStrategy(tempCandles, STRATEGY2_PARAMS, INITIAL_CAPITAL, FEE_PERCENT);
-      btcSignal2.update(res2.currentState);
-      const signalLiveDot2 = document.getElementById('signal-live-dot-2');
-      if (signalLiveDot2) signalLiveDot2.className = CSS_CLASSES.DOT_SIGNAL_ACTIVE_CROSS;
-      if (res2.currentState.signal) {
-        checkAndTriggerAlert('BTCUSDT', 'emacross', res2.currentState.price, res2.currentState.signal, kline.time, res2.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
+  feed.addEventListener('candleClose', () => {
+    configKeys.forEach(key => {
+      runBacktestFlow(key);
+    });
+  });
+
+  feed.addEventListener('close', () => {
+    configKeys.forEach(key => {
+      const view = views[key];
+      if (view) {
+        const dot = view.root.querySelector('.live-price-dot');
+        if (dot) dot.className = CSS_CLASSES.DOT_LIVE_NEUTRAL;
       }
-    }
+    });
   });
 
-  btcFeed.addEventListener('candleClose', () => {
-    runBtcFlow();
-  });
-
-  btcFeed.addEventListener('close', () => {
-    if (liveDot) liveDot.className = CSS_CLASSES.DOT_LIVE_NEUTRAL;
-    if (liveDot2) liveDot2.className = CSS_CLASSES.DOT_LIVE_NEUTRAL;
-  });
-
-  btcFeed.addEventListener('error', () => {
-    if (liveDot) liveDot.className = CSS_CLASSES.DOT_LIVE_ERROR;
-    if (liveDot2) liveDot2.className = CSS_CLASSES.DOT_LIVE_ERROR;
-  });
-
-  btcFeed.connect();
-}
-
-// Live feed listeners for ETHUSDT
-function setupEthLiveFeed() {
-  ethFeed = new LiveFeed('ETHUSDT', '4h');
-
-  const liveDot3 = document.getElementById('live-price-dot-3');
-  const liveVal3 = document.getElementById('live-price-value-3');
-
-  ethFeed.addEventListener('open', () => {
-    if (liveDot3) liveDot3.className = 'w-2 h-2 rounded-full inline-block bg-neon-emerald shadow-[0_0_6px_#00e676] animate-pulse';
-  });
-
-  ethFeed.addEventListener('price', (e) => {
-    const kline = e.detail;
-    ethChart3.updateLiveCandle(kline);
-
-    if (liveVal3) {
-      liveVal3.textContent = '$' + formatPrice(kline.close);
-    }
-
-    const now = Date.now();
-    if (now - lastEthUpdate < 1500) return;
-    lastEthUpdate = now;
-
-    if (lastLoadedCandlesEth && !isEthRunning) {
-      const tempCandles = [...lastLoadedCandlesEth, kline];
-      const res3 = runEmaCrossStrategy(tempCandles, STRATEGY3_PARAMS, INITIAL_CAPITAL, FEE_PERCENT);
-      ethSignal3.update(res3.currentState);
-      const signalLiveDot3 = document.getElementById('signal-live-dot-3');
-      if (signalLiveDot3) signalLiveDot3.className = CSS_CLASSES.DOT_SIGNAL_ACTIVE_CROSS;
-      if (res3.currentState.signal) {
-        checkAndTriggerAlert('ETHUSDT', 'eth', res3.currentState.price, res3.currentState.signal, kline.time, res3.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
-      }
-    }
-  });
-
-  ethFeed.addEventListener('candleClose', () => {
-    runEthFlow();
-  });
-
-  ethFeed.addEventListener('close', () => {
-    if (liveDot3) liveDot3.className = CSS_CLASSES.DOT_LIVE_NEUTRAL;
-  });
-
-  ethFeed.connect();
+  feed.connect();
 }

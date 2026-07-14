@@ -7,21 +7,21 @@
 
 class MetricsPanel {
   /**
-   * @param {string} suffix - DOM ID suffix ('', '-2', or '-3') to bind elements
+   * @param {HTMLElement} viewRoot - Cloned template root DOM element
    */
-  constructor(suffix = '') {
-    this.suffix = suffix;
-    this.mainOverlay = document.getElementById(suffix ? `main-overlay${suffix}` : 'main-overlay');
-    this.overlayMessage = document.getElementById(suffix ? `overlay-message${suffix}` : 'overlay-message');
-    this.statusDot = document.getElementById(suffix ? `status-dot${suffix}` : 'status-dot');
-    this.statusText = document.getElementById(suffix ? `status-text${suffix}` : 'status-text');
+  constructor(viewRoot) {
+    this.viewRoot = viewRoot;
+    this.mainOverlay = viewRoot.querySelector('.main-overlay');
+    this.overlayMessage = viewRoot.querySelector('.overlay-message');
+    this.statusDot = viewRoot.querySelector('.status-dot');
+    this.statusText = viewRoot.querySelector('.status-text');
 
-    this.returnMetric = document.getElementById(suffix ? `metric-return${suffix}` : 'metric-return');
-    this.returnAbsEl = document.getElementById(suffix ? `metric-return-abs${suffix}` : 'metric-return-abs');
-    this.winrateMetric = document.getElementById(suffix ? `metric-winrate${suffix}` : 'metric-winrate');
-    this.tradesMetric = document.getElementById(suffix ? `metric-trades${suffix}` : 'metric-trades');
-    this.drawdownMetric = document.getElementById(suffix ? `metric-drawdown${suffix}` : 'metric-drawdown');
-    this.factorMetric = document.getElementById(suffix ? `metric-factor${suffix}` : 'metric-factor');
+    this.returnMetric = viewRoot.querySelector('.metric-return');
+    this.returnAbsEl = viewRoot.querySelector('.metric-return-abs');
+    this.winrateMetric = viewRoot.querySelector('.metric-winrate');
+    this.tradesMetric = viewRoot.querySelector('.metric-trades');
+    this.drawdownMetric = viewRoot.querySelector('.metric-drawdown');
+    this.factorMetric = viewRoot.querySelector('.metric-factor');
   }
 
   /**

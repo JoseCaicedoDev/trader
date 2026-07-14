@@ -7,10 +7,10 @@
 
 class TradesTable {
   /**
-   * @param {string} tbodyId - DOM ID of the table body to render into
+   * @param {HTMLElement} viewRoot - Cloned template root DOM element
    */
-  constructor(tbodyId) {
-    this.tbody = document.getElementById(tbodyId);
+  constructor(viewRoot) {
+    this.tbody = viewRoot.querySelector('.trades-table-body');
   }
 
   /**

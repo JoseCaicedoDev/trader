@@ -8,47 +8,29 @@
 const lastAlertedKeys = new Set();
 
 // Synchronize all settings checkboxes
-document.addEventListener('DOMContentLoaded', () => {
-  initAlertManager();
-});
+// Will be called explicitly by main.js after DOM rendering
 
 function initAlertManager() {
-  const sound1 = document.getElementById('chk-alert-sound');
-  const sound2 = document.getElementById('chk-alert-sound-2');
-  const sound3 = document.getElementById('chk-alert-sound-3');
+  const checkboxes = document.querySelectorAll('.chk-alert-sound');
+  const reqButtons = document.querySelectorAll('.btn-request-notifications');
+  const testButtons = document.querySelectorAll('.btn-test-alert');
 
   function syncCheckboxes(checked) {
-    if (sound1) sound1.checked = checked;
-    if (sound2) sound2.checked = checked;
-    if (sound3) sound3.checked = checked;
+    checkboxes.forEach(cb => {
+      cb.checked = checked;
+    });
   }
 
-  [sound1, sound2, sound3].forEach(el => {
-    if (el) {
-      el.addEventListener('change', (e) => syncCheckboxes(e.target.checked));
-    }
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', (e) => syncCheckboxes(e.target.checked));
   });
 
-  // Setup permission request buttons
-  const reqBtn1 = document.getElementById('btn-request-notifications');
-  const reqBtn2 = document.getElementById('btn-request-notifications-2');
-  const reqBtn3 = document.getElementById('btn-request-notifications-3');
-
-  [reqBtn1, reqBtn2, reqBtn3].forEach(btn => {
-    if (btn) {
-      btn.addEventListener('click', requestNotificationPermission);
-    }
+  reqButtons.forEach(btn => {
+    btn.addEventListener('click', requestNotificationPermission);
   });
 
-  // Setup test buttons
-  const testBtn1 = document.getElementById('btn-test-alert');
-  const testBtn2 = document.getElementById('btn-test-alert-2');
-  const testBtn3 = document.getElementById('btn-test-alert-3');
-
-  [testBtn1, testBtn2, testBtn3].forEach(btn => {
-    if (btn) {
-      btn.addEventListener('click', triggerTestAlert);
-    }
+  testButtons.forEach(btn => {
+    btn.addEventListener('click', triggerTestAlert);
   });
 
   // Initialize visual permission status indicators
@@ -73,13 +55,8 @@ function requestNotificationPermission() {
 
 function updatePermissionUI() {
   const permission = Notification.permission;
-  const dot1 = document.getElementById('alerts-status-dot');
-  const dot2 = document.getElementById('alerts-status-dot-2');
-  const dot3 = document.getElementById('alerts-status-dot-3');
-
-  const btn1 = document.getElementById('btn-request-notifications');
-  const btn2 = document.getElementById('btn-request-notifications-2');
-  const btn3 = document.getElementById('btn-request-notifications-3');
+  const dots = document.querySelectorAll('.alerts-status-dot');
+  const buttons = document.querySelectorAll('.btn-request-notifications');
 
   const okDot = 'w-1.5 h-1.5 rounded-full inline-block bg-neon-emerald shadow-[0_0_6px_#00e676]';
   const badDot = 'w-1.5 h-1.5 rounded-full inline-block bg-neon-rose shadow-[0_0_6px_#ff1744]';
@@ -96,21 +73,15 @@ function updatePermissionUI() {
     btnText = "Alertas Bloqueadas";
   }
 
-  [dot1, dot2, dot3].forEach(dot => {
+  dots.forEach(dot => {
     if (dot) dot.className = dotClass;
   });
 
-  [btn1, btn2, btn3].forEach(btn => {
+  buttons.forEach(btn => {
     if (btn) {
       btn.textContent = btnText;
       if (permission === 'granted') {
-        btn.classList.replace('bg-neon-cyan/15', 'bg-neon-emerald/10');
-        btn.classList.replace('text-neon-cyan', 'text-neon-emerald');
-        btn.classList.replace('border-neon-cyan/25', 'border-neon-emerald/25');
-        
-        btn.classList.replace('bg-neon-purple/15', 'bg-neon-emerald/10');
-        btn.classList.replace('text-neon-purple', 'text-neon-emerald');
-        btn.classList.replace('border-neon-purple/25', 'border-neon-emerald/25');
+        btn.className = 'w-full py-2 px-3 bg-neon-emerald/10 hover:bg-neon-emerald/20 border border-neon-emerald/25 text-neon-emerald font-bold rounded-lg transition-colors flex items-center justify-center gap-2';
       }
     }
   });

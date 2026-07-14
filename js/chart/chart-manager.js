@@ -9,13 +9,13 @@
 
 class ChartManager {
   /**
-   * @param {string} priceContainerId - DOM ID for the price candlestick chart
-   * @param {string} equityContainerId - DOM ID for the equity line chart
+   * @param {HTMLElement} priceContainer - DOM element for the price candlestick chart
+   * @param {HTMLElement} equityContainer - DOM element for the equity line chart
    * @param {string} accentColor - Hex code representing the theme color (cyan, purple, etc.)
    */
-  constructor(priceContainerId, equityContainerId, accentColor) {
-    this.priceContainer = document.getElementById(priceContainerId);
-    this.equityContainer = document.getElementById(equityContainerId);
+  constructor(priceContainer, equityContainer, accentColor) {
+    this.priceContainer = priceContainer;
+    this.equityContainer = equityContainer;
     this.accentColor = accentColor;
 
     this.priceChart = null;
