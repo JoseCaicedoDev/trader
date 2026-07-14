@@ -122,11 +122,17 @@ function updateLiveSignalState(k) {
   if (signalLiveDot) {
     signalLiveDot.className = 'w-1.5 h-1.5 rounded-full inline-block bg-neon-emerald animate-pulse';
   }
+  if (liveResult.currentState.signal) {
+    checkAndTriggerAlert('BTCUSDT', 'wyckoff', liveResult.currentState.price, liveResult.currentState.signal, liveCandle.time, liveResult.currentState.lastEvent);
+  }
 
   const liveResult2 = runEmaCrossStrategy(tempCandles, STRATEGY2_PARAMS, INITIAL_CAPITAL, FEE_PERCENT);
   updateSignalPanel2(liveResult2.currentState);
   if (signalLiveDot2) {
     signalLiveDot2.className = 'w-1.5 h-1.5 rounded-full inline-block bg-neon-purple animate-pulse';
+  }
+  if (liveResult2.currentState.signal) {
+    checkAndTriggerAlert('BTCUSDT', 'emacross', liveResult2.currentState.price, liveResult2.currentState.signal, liveCandle.time, liveResult2.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
   }
 }
 
@@ -203,5 +209,8 @@ function updateEthLiveSignalState(k) {
   updateSignalPanel3(liveResult3.currentState);
   if (signalLiveDot3) {
     signalLiveDot3.className = 'w-1.5 h-1.5 rounded-full inline-block bg-neon-purple animate-pulse';
+  }
+  if (liveResult3.currentState.signal) {
+    checkAndTriggerAlert('ETHUSDT', 'eth', liveResult3.currentState.price, liveResult3.currentState.signal, liveCandle.time, liveResult3.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
   }
 }

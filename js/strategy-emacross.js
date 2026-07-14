@@ -80,6 +80,7 @@ function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
     vwap: vwap[last],
     aboveVwap: vwap[last] !== null ? data[last].close > vwap[last] : null,
     bullishStructure: (emaF[last] !== null && emaS[last] !== null) ? emaF[last] > emaS[last] : null,
+    signal: signals[last],
     openTrade: openTrade ? {
       direction: openTrade.direction,
       entryPrice: openTrade.price,

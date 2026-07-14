@@ -260,6 +260,7 @@ function runWyckoffUnifiedStrategy(data, params, initialCapital, feePercent) {
     stochOversold: k[last] !== null ? k[last] < stochBuy : null,
     stochOverbought: k[last] !== null ? k[last] > stochSell : null,
     lastEvent,
+    signal: signals[last],
     openTrade: openTrade ? {
       direction: openTrade.direction,
       entryPrice: openTrade.price,

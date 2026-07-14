@@ -45,6 +45,13 @@
     ::-webkit-scrollbar-thumb:hover {
       background: rgba(255, 255, 255, 0.25);
     }
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .animate-slide-in {
+      animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
   </style>
 </head>
 <body class="bg-dark-bg text-gray-100 min-h-screen overflow-x-hidden font-['Outfit'] antialiased relative">
@@ -92,6 +99,32 @@
           <span id="status-text" class="text-gray-300 font-medium">Conectando...</span>
         </div>
       </div>
+
+      <!-- Alertas de Señales -->
+      <section class="glass-card rounded-xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-cyan"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <h2 class="text-xs font-bold tracking-tight text-white uppercase">Alertas de Señales</h2>
+          </div>
+          <span id="alerts-status-dot" class="w-1.5 h-1.5 rounded-full inline-block bg-gray-500"></span>
+        </div>
+        <div class="flex flex-col gap-2 text-xs">
+          <button type="button" id="btn-request-notifications" class="w-full py-2 px-3 bg-neon-cyan/15 hover:bg-neon-cyan/25 border border-neon-cyan/25 text-neon-cyan font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+            Permitir Alertas
+          </button>
+          <div class="flex items-center justify-between bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span class="text-gray-400">Sonido de alerta:</span>
+            <label class="relative inline-flex items-center cursor-pointer select-none">
+              <input type="checkbox" id="chk-alert-sound" checked class="sr-only peer">
+              <div class="w-8 h-4 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-neon-cyan relative"></div>
+            </label>
+          </div>
+          <button type="button" id="btn-test-alert" class="w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 border border-white/8 text-gray-300 rounded-lg transition-colors text-[11px] font-semibold">
+            Probar Alerta (Test)
+          </button>
+        </div>
+      </section>
 
       <!-- Live Signal State: plain-language checklist of exactly which entry conditions are true
            right now, plus SL/TP/unrealized P&L if a position is open -->
@@ -295,6 +328,32 @@
         </div>
       </div>
 
+      <!-- Alertas de Señales -->
+      <section class="glass-card rounded-xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <h2 class="text-xs font-bold tracking-tight text-white uppercase">Alertas de Señales</h2>
+          </div>
+          <span id="alerts-status-dot-2" class="w-1.5 h-1.5 rounded-full inline-block bg-gray-500"></span>
+        </div>
+        <div class="flex flex-col gap-2 text-xs">
+          <button type="button" id="btn-request-notifications-2" class="w-full py-2 px-3 bg-neon-purple/15 hover:bg-neon-purple/25 border border-neon-purple/25 text-neon-purple font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+            Permitir Alertas
+          </button>
+          <div class="flex items-center justify-between bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span class="text-gray-400">Sonido de alerta:</span>
+            <label class="relative inline-flex items-center cursor-pointer select-none">
+              <input type="checkbox" id="chk-alert-sound-2" checked class="sr-only peer">
+              <div class="w-8 h-4 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-neon-purple relative"></div>
+            </label>
+          </div>
+          <button type="button" id="btn-test-alert-2" class="w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 border border-white/8 text-gray-300 rounded-lg transition-colors text-[11px] font-semibold">
+            Probar Alerta (Test)
+          </button>
+        </div>
+      </section>
+
       <div class="text-xs text-gray-400 bg-neon-rose/10 border border-neon-rose/20 rounded-lg p-3 leading-relaxed">
 Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan alineadas (las 3 líneas cruzándose entre sí) y mantiene la posición hasta el cruce opuesto o el SL/TP, sin estructura Wyckoff. Validada sobre los mismos datos que ves en pantalla (76.5% de acierto, 31.40% de retorno, 4.37% de drawdown), pero con menos operaciones históricas que la estrategia principal — se muestra aquí solo para comparar enfoques.
       </div>
@@ -455,6 +514,32 @@ Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan al
         </div>
       </div>
 
+      <!-- Alertas de Señales -->
+      <section class="glass-card rounded-xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <h2 class="text-xs font-bold tracking-tight text-white uppercase">Alertas de Señales</h2>
+          </div>
+          <span id="alerts-status-dot-3" class="w-1.5 h-1.5 rounded-full inline-block bg-gray-500"></span>
+        </div>
+        <div class="flex flex-col gap-2 text-xs">
+          <button type="button" id="btn-request-notifications-3" class="w-full py-2 px-3 bg-neon-purple/15 hover:bg-neon-purple/25 border border-neon-purple/25 text-neon-purple font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+            Permitir Alertas
+          </button>
+          <div class="flex items-center justify-between bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <span class="text-gray-400">Sonido de alerta:</span>
+            <label class="relative inline-flex items-center cursor-pointer select-none">
+              <input type="checkbox" id="chk-alert-sound-3" checked class="sr-only peer">
+              <div class="w-8 h-4 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-neon-purple relative"></div>
+            </label>
+          </div>
+          <button type="button" id="btn-test-alert-3" class="w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 border border-white/8 text-gray-300 rounded-lg transition-colors text-[11px] font-semibold">
+            Probar Alerta (Test)
+          </button>
+        </div>
+      </section>
+
       <div class="text-xs text-gray-400 bg-neon-rose/10 border border-neon-rose/20 rounded-lg p-3 leading-relaxed">
         Misma lógica que "VWAP + Cruce EMA" (cruce triple EMA/VWAP, mantiene hasta el cruce opuesto o SL/TP), pero sobre ETH/USDT 4h en vez de BTC/USDT — con sus propios parámetros (EMA19/45, VWAP 55), validados por separado contra datos reales de ETH ya que los de BTC no funcionaban bien aquí.
       </div>
@@ -590,6 +675,9 @@ Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan al
 
   </div>
 
+  <!-- Toast Container for active alerts -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[999] flex flex-col gap-3 max-w-sm pointer-events-auto"></div>
+
   <!-- TradingView Lightweight Charts (Standalone version) -->
   <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
   <!-- Lucide Icons CDN -->
@@ -606,6 +694,7 @@ Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan al
   <script src="js/binance-api.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/alerts.js"></script>
   <script src="js/live-feed.js"></script>
   <script src="js/main.js"></script>
 </body>
