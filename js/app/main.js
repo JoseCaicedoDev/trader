@@ -31,8 +31,7 @@ const STRATEGIES_CONFIG = [
     strategyType: 'emacross',
     strategyParams: STRATEGY2_PARAMS,
     runStrategy: runEmaCrossStrategy,
-    showStochastic: false,
-    description: 'Estrategia de referencia más simple: entra cuando EMA21, EMA30 y VWAP quedan alineadas (las 3 líneas cruzándose entre sí) y mantiene la posición hasta el cruce opuesto o el SL/TP, sin estructura Wyckoff. Validada sobre los mismos datos que ves en pantalla (76.5% de acierto, 31.40% de retorno, 4.37% de drawdown), pero con menos operaciones históricas que la estrategia principal — se muestra aquí solo para comparar enfoques.'
+    showStochastic: false
   },
   {
     key: 'eth',
@@ -45,8 +44,7 @@ const STRATEGIES_CONFIG = [
     strategyType: 'emacross',
     strategyParams: STRATEGY3_PARAMS,
     runStrategy: runEmaCrossStrategy,
-    showStochastic: false,
-    description: 'Misma lógica que "VWAP + Cruce EMA" (cruce triple EMA/VWAP, mantiene hasta el cruce opuesto o SL/TP), pero sobre ETH/USDT 4h en vez de BTC/USDT — con sus propios parámetros (EMA19/45, VWAP 55), validados por separado contra datos reales de ETH ya que los de BTC no funcionaban bien aquí.'
+    showStochastic: false
   }
 ];
 
@@ -98,10 +96,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       root.querySelector('.signal-event-badge').classList.remove('hidden');
     }
 
-    if (config.description) {
-      root.querySelector('.strategy-desc-container').classList.remove('hidden');
-      root.querySelector('.strategy-desc').textContent = config.description;
-    }
+
 
     // Set tab border accent colors
     const tabBtns = root.querySelectorAll('.tab-btn');
