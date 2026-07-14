@@ -2,6 +2,34 @@
 
 Registro cronológico y persistente de todas las operaciones realizadas sobre la base de conocimientos del LLM Wiki (ingestas, modificaciones, auditorías y simulaciones).
 
+## [2026-07-13] ingest | Clean Code & Architecture Standards — AGENTS.md
+- Añadida sección completa "Clean Code & Architecture Standards" al [.agents/AGENTS.md](file:///c:/Users/gira/Desktop/backtesting/.agents/AGENTS.md).
+- Define la arquitectura objetivo en 4 capas (Core, Infrastructure, UI Components, App Bootstrap) con reglas de dependencia estrictas entre capas.
+- Documenta los 5 principios SOLID con reglas de enforcement concretas y señales de violación para cada uno.
+- Especifica convenciones de nomenclatura, límites de función (20 líneas máx.), manejo de estado, y reglas de comentarios (WHY not WHAT).
+- Lista de anti-patterns prohibidos: funciones numeradas (fn1/fn2/fn3), `var`, globals implícitos, innerHTML en bucles, listeners duplicados, strings CSS hardcodeados en JS.
+- Estándares de HTML semántico: `<main>`, `<nav>`, `<aside>`, `<section>`, `<article>`, `<header>` + atributos ARIA obligatorios.
+- Estándares de performance: DocumentFragment, ResizeObserver, requestAnimationFrame, throttle de 1500ms para live signal.
+- Design tokens CSS en `:root` y objeto `CSS_CLASSES` centralizado en `dom-utils.js`.
+- Checklist de code review de 12 puntos y tabla de tareas de refactor pendientes con estado ⬜/✅.
+- Creado plan de implementación detallado en el artifact `implementation_plan.md`.
+
+---
+
+## [2026-07-13] ingest | Actualización de Contexto Completo — AGENTS.md
+- Reescrito [.agents/AGENTS.md](file:///c:/Users/gira/Desktop/backtesting/.agents/AGENTS.md) con la memoria completa del sistema acumulada hasta la fecha.
+- Añadida sección "Project State": describe la app (Antigravity Backtester), las dos estrategias con toda su lógica validada y parámetros, el motor de simulación, el inventario completo de páginas del wiki, el roadmap de mejoras pendientes, y las restricciones técnicas críticas (no-lookahead, validación out-of-sample, CORS Binance).
+- El AGENTS.md ahora funciona como **memoria del sistema**: todo agente que lo lea tiene el contexto completo del proyecto sin necesidad de analizar el código fuente.
+
+---
+
+## [2026-07-13] ingest | Mejoras de Acierto y Retorno — Análisis de Estrategias
+- Creada página de análisis en [mejoras_acierto_retorno.md](file:///c:/Users/gira/Desktop/backtesting/wiki/mejoras_acierto_retorno.md).
+- Cubre 9 vectores de mejora concretos para las estrategias Wyckoff Unificada y VWAP+EMA Cross: calidad de entrada (score LPS>=2, R:R mínimo 1.5, volumen en Spring), gestión SL/TP (trailing stop, TP escalonado), filtro de régimen de volatilidad (ATR percentile, Bollinger), confirmación multi-timeframe diaria, scoring RSI+StochRSI, y sizing proporcional al score.
+- Vinculada en [index.md](file:///c:/Users/gira/Desktop/backtesting/wiki/index.md) bajo la sección "Análisis y Optimización".
+
+---
+
 ## [2026-07-13] ingest | Smart Money Concepts & Fibonacci Ratios
 - Ingestado artículo científico sobre la integración matemática de SMC y Fibonacci en [smc_fib_paper.md](file:///c:/Users/gira/Desktop/backtesting/wiki/sources/smc_fib_paper.md).
 - Creado documento de síntesis teórica en [conceptos_smart_money.md](file:///c:/Users/gira/Desktop/backtesting/wiki/conceptos_smart_money.md) detallando la teoría estructural, el modelado probabilístico de campanas gaussianas de Fibonacci, las métricas de acierto (72% HPZ) y las directrices aplicadas a BTC.

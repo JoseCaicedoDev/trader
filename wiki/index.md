@@ -21,6 +21,13 @@ Bienvenido al Wiki personal de estrategias de trading cuantitativo. Este espacio
 
 ---
 
+## 🔬 Análisis y Optimización
+
+- [Mejoras de Acierto y Retorno](file:///c:/Users/gira/Desktop/backtesting/wiki/mejoras_acierto_retorno.md)
+  - *Vectores concretos para mejorar win rate y retorno total: filtros de entrada, gestión de SL/TP, régimen de volatilidad, MTF y sizing.*
+
+---
+
 ## 📈 Conceptos Clave & Configuración
 
 - [Esquema del Wiki (.agents/AGENTS.md)](file:///c:/Users/gira/Desktop/backtesting/.agents/AGENTS.md)
