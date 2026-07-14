@@ -2,6 +2,16 @@
 
 Registro cronológico y persistente de todas las operaciones realizadas sobre la base de conocimientos del LLM Wiki (ingestas, modificaciones, auditorías y simulaciones).
 
+## [2026-07-13] ingest | Sistema de Alertas y Notificaciones en Vivo
+- Creado módulo [alerts.js](file:///c:/Users/gira/Desktop/backtesting/js/alerts.js) para gestionar las notificaciones y alarmas.
+- Integrado soporte nativo para la API de Notificaciones HTML5 de escritorio (con solicitud de permiso reactiva).
+- Implementado sintetizador de sonido premium mediante la API de Web Audio (para beeps dobles ascendentes en LONG y descendentes en SHORT) sin dependencias de red.
+- Creada interfaz de configuración en el menú lateral de cada estrategia (`index.html`) sincronizada en tiempo real.
+- Creado sistema visual de alertas de tipo Toast slide-in animadas por CSS como fallback.
+- Modificados archivos de estrategia y live feed para inyectar y detectar eventos en tiempo real evitando spam de alertas.
+
+---
+
 ## [2026-07-13] ingest | Clean Code & Architecture Standards — AGENTS.md
 - Añadida sección completa "Clean Code & Architecture Standards" al [.agents/AGENTS.md](file:///c:/Users/gira/Desktop/backtesting/.agents/AGENTS.md).
 - Define la arquitectura objetivo en 4 capas (Core, Infrastructure, UI Components, App Bootstrap) con reglas de dependencia estrictas entre capas.
