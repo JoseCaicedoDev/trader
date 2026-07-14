@@ -18,6 +18,8 @@ const STRATEGIES_CONFIG = [
     strategyParams: STRATEGY_PARAMS,
     runStrategy: runWyckoffUnifiedStrategy,
     showStochastic: true,
+    emaFastLabel: STRATEGY_PARAMS.ema21Period,
+    emaSlowLabel: STRATEGY_PARAMS.ema50Period,
     description: null
   },
   {
@@ -31,7 +33,9 @@ const STRATEGIES_CONFIG = [
     strategyType: 'emacross',
     strategyParams: STRATEGY2_PARAMS,
     runStrategy: runEmaCrossStrategy,
-    showStochastic: false
+    showStochastic: false,
+    emaFastLabel: STRATEGY2_PARAMS.emaFast,
+    emaSlowLabel: STRATEGY2_PARAMS.emaSlow
   },
   {
     key: 'eth',
@@ -44,7 +48,9 @@ const STRATEGIES_CONFIG = [
     strategyType: 'emacross',
     strategyParams: STRATEGY3_PARAMS,
     runStrategy: runEmaCrossStrategy,
-    showStochastic: false
+    showStochastic: false,
+    emaFastLabel: STRATEGY3_PARAMS.emaFast,
+    emaSlowLabel: STRATEGY3_PARAMS.emaSlow
   }
 ];
 
@@ -120,11 +126,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     const chartManager = new ChartManager(
       domRoot.querySelector('.main-chart'),
       domRoot.querySelector('.equity-chart'),
-      config.accentColor === 'cyan' ? '#00e5ff' : '#b388ff'
+      config.accentColor === 'cyan' ? '#00e5ff' : '#b388ff',
+      EVENT_LABELS
     );
 
     const metricsPanel = new MetricsPanel(domRoot);
-    const signalPanel = new SignalPanel(domRoot, config.strategyType, config.isEthTimeframe);
+    const signalPanel = new SignalPanel(domRoot, {
+      emaFastLabel: config.emaFastLabel,
+      emaSlowLabel: config.emaSlowLabel,
+      priceDecimals: config.isEthTimeframe ? 2 : 0
+    });
     const tradesTable = new TradesTable(domRoot);
 
     const strategyView = new StrategyView(domRoot, chartManager, config.accentColor);
@@ -279,6 +290,17 @@ function setupLiveFeed(symbol, configKeys) {
       if (view) {
         const dot = view.root.querySelector('.live-price-dot');
         if (dot) dot.className = CSS_CLASSES.DOT_LIVE_NEUTRAL;
+      }
+    });
+  });
+
+  feed.addEventListener('error', () => {
+    configKeys.forEach(key => {
+      const view = views[key];
+      if (view) {
+        const dot = view.root.querySelector('.live-price-dot');
+        if (dot) dot.className = CSS_CLASSES.DOT_LIVE_ERROR;
+        view.metricsPanel.setError(`Se perdió la conexión en vivo con ${symbol}. Reintentando...`);
       }
     });
   });

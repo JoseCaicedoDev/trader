@@ -37,20 +37,16 @@ function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
     const close = data[i].close;
     const prevAlign = alignment(i - 1);
     const currAlign = alignment(i);
+    if (currAlign === prevAlign || (currAlign !== 1 && currAlign !== -1)) continue;
 
-    if (currAlign === 1 && prevAlign !== 1) {
-      signals[i] = 'BUY';
-      eventLabels[i] = 'EMA_CROSS_UP';
-      const stopDist = atr[i] * atrMult;
-      stopLossLevels[i] = close - stopDist;
-      takeProfitLevels[i] = close + stopDist * rrRatio;
-    } else if (currAlign === -1 && prevAlign !== -1) {
-      signals[i] = 'SHORT';
-      eventLabels[i] = 'EMA_CROSS_DOWN';
-      const stopDist = atr[i] * atrMult;
-      stopLossLevels[i] = close + stopDist;
-      takeProfitLevels[i] = close - stopDist * rrRatio;
-    }
+    // Stop/target geometry is identical for both directions (ATR-scaled distance, mirrored above
+    // vs below the entry close) — computed once and applied with the sign flipped per direction.
+    const stopDist = atr[i] * atrMult;
+    const isBullish = currAlign === 1;
+    signals[i] = isBullish ? 'BUY' : 'SHORT';
+    eventLabels[i] = isBullish ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN';
+    stopLossLevels[i] = isBullish ? close - stopDist : close + stopDist;
+    takeProfitLevels[i] = isBullish ? close + stopDist * rrRatio : close - stopDist * rrRatio;
     // No intermediate exit signal on a partial alignment breakdown — a position only closes via
     // SL/TP or a full opposite-direction entry (handled as a reversal by runSimulator), per the
     // validated "hold until opposite cross" behavior above.

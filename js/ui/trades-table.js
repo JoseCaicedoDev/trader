@@ -64,7 +64,7 @@ class TradesTable {
         row.innerHTML = `
           <td class="p-3">${directionBadge(entry.type)}</td>
           <td class="p-3 text-gray-300">${formatDate(entry.time)}</td>
-          <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold text-center bg-neon-purple/15 text-neon-purple border border-neon-purple/20">${entryEventLabel}</span></td>
+          <td class="p-3"><span class="${CSS_CLASSES.BADGE_EVENT_ENTRY}">${entryEventLabel}</span></td>
           <td class="p-3 text-gray-300 font-mono">$${formatPrice(entry.price)}</td>
           <td class="p-3 text-gray-500" colspan="3">Posición abierta (aún sin cerrar)</td>
           <td class="p-3 text-gray-500">-</td>
@@ -83,7 +83,7 @@ class TradesTable {
         row.innerHTML = `
           <td class="p-3">${directionBadge(entry.type)}</td>
           <td class="p-3 text-gray-300">${formatDate(entry.time)}</td>
-          <td class="p-3"><span class="inline-block px-2 py-0.5 rounded text-xs font-semibold text-center bg-neon-purple/15 text-neon-purple border border-neon-purple/20">${entryEventLabel}</span></td>
+          <td class="p-3"><span class="${CSS_CLASSES.BADGE_EVENT_ENTRY}">${entryEventLabel}</span></td>
           <td class="p-3 text-gray-300 font-mono">$${formatPrice(entry.price)}</td>
           <td class="p-3 text-gray-300">${formatDate(exit.time)}</td>
           <td class="p-3"><span class="${exitBadgeClass}">${exitEventLabel}</span></td>

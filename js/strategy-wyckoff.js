@@ -72,13 +72,87 @@ function detectWyckoffEvents(data, lookback, volMult) {
   return { events, rangeHigh, rangeLow };
 }
 
+// Confluence score for a Wyckoff entry candidate: StochRSI extreme zone, a bullish/bearish %K-%D
+// cross, and price sitting in the Fibonacci 0.382-0.618 retracement zone of the current range each
+// contribute +1. A trend-continuation event (LPS/LPSY) additionally loses a point if price hasn't
+// yet reclaimed the macro EMA trend — see runWyckoffUnifiedStrategy's header comment for why.
+// direction: +1 for the bullish side (Spring/LPS), -1 for the bearish side (UTAD/LPSY).
+function computeWyckoffScore(i, event, direction, ctx) {
+  const { k, d, emaTrend, stochBuy, stochSell, close, fibPos } = ctx;
+  const inExtremeZone = k[i] !== null && (direction === 1 ? k[i] < stochBuy : k[i] > stochSell);
+  const crossed = k[i - 1] !== null && d[i - 1] !== null && k[i] !== null && d[i] !== null &&
+    (direction === 1 ? (k[i - 1] <= d[i - 1] && k[i] > d[i]) : (k[i - 1] >= d[i - 1] && k[i] < d[i]));
+  const inFibZone = fibPos >= 0.382 && fibPos <= 0.618;
+
+  let score = (inExtremeZone ? 1 : 0) + (crossed ? 1 : 0) + (inFibZone ? 1 : 0);
+  const isContinuation = event === 'LPS' || event === 'LPSY';
+  if (isContinuation && emaTrend[i] !== null) {
+    if (direction === 1 && close < emaTrend[i]) score--;
+    if (direction === -1 && close > emaTrend[i]) score--;
+  }
+  return score;
+}
+
+// Entry gates (both required, on top of score >= 1): a genuine rejection candle (close near the
+// edge of its own range on the trade's side) and price on the confirmed structural side of the
+// trend — VWAP value area plus EMA21/50 alignment. See the strategy header for validation notes.
+function isWyckoffEntryGated(i, direction, ctx) {
+  const { c, range, close, vwap, ema21, ema50, minRejection } = ctx;
+  const rejectionStrength = range > 0
+    ? (direction === 1 ? (c.close - c.low) / range : (c.high - c.close) / range)
+    : 0;
+  const strongCandle = rejectionStrength >= minRejection;
+
+  const trendOk = direction === 1
+    ? (vwap[i] === null || close > vwap[i] * 0.97) && (ema21[i] === null || ema50[i] === null || ema21[i] > ema50[i])
+    : (vwap[i] === null || close < vwap[i] * 1.03) && (ema21[i] === null || ema50[i] === null || ema21[i] < ema50[i]);
+
+  return strongCandle && trendOk;
+}
+
+// Risk defined by the structure itself: stop beyond the trigger candle's own extreme (the level
+// that invalidates the read), ATR-scaled as a floor/ceiling. Target follows Wyckoff's Cause &
+// Effect (range-height projection, extended for LPS/LPSY since they retest an already-broken
+// level), preferring a confirmed major S/R pivot if it sits closer than that projection — see the
+// strategy header for the real-data validation behind both choices.
+function computeWyckoffStopAndTarget(i, event, direction, ctx) {
+  const { c, close, atr, atrMult, tpFraction, rangeHigh, rangeLow, rangeHeight, knownSupports, knownResistances } = ctx;
+
+  if (direction === 1) {
+    let fullTarget = event === 'SPRING' ? rangeHigh[i] : rangeHigh[i] + rangeHeight;
+    const nearestResistance = nearestLevelAbove(knownResistances, close);
+    if (nearestResistance !== null && nearestResistance > close) fullTarget = nearestResistance;
+    return {
+      stopLoss: Math.min(c.low, close - atr[i] * atrMult),
+      takeProfit: close + (fullTarget - close) * tpFraction
+    };
+  }
+  let fullTarget = event === 'UTAD' ? rangeLow[i] : rangeLow[i] - rangeHeight;
+  const nearestSupport = nearestLevelBelow(knownSupports, close);
+  if (nearestSupport !== null && nearestSupport < close) fullTarget = nearestSupport;
+  return {
+    stopLoss: Math.max(c.high, close + atr[i] * atrMult),
+    takeProfit: close - (close - fullTarget) * tpFraction
+  };
+}
+
+// Evaluates one Wyckoff entry candidate (score + gates + stop/target) for either side. Returns
+// null if the entry doesn't qualify, otherwise the SL/TP levels to record for candle i.
+// direction: +1 = bullish (Spring/LPS, opens LONG), -1 = bearish (UTAD/LPSY, opens SHORT).
+function evaluateWyckoffEntry(i, event, direction, ctx) {
+  const score = computeWyckoffScore(i, event, direction, ctx);
+  if (score < 1 || !isWyckoffEntryGated(i, direction, ctx)) return null;
+  return computeWyckoffStopAndTarget(i, event, direction, ctx);
+}
+
 // Unified Strategy: Wyckoff structure events confirmed by Stochastic RSI confluence — long AND
 // short, symmetric by design for futures trading.
 //   - Bullish side (Spring, LPS)  -> opens LONG (closes a SHORT first if one is open: a reversal).
 //   - Bearish side (UTAD, LPSY)   -> opens SHORT (closes a LONG first if one is open: a reversal),
 //     mirroring the bullish side event-for-event: UTAD mirrors Spring (single-candle false
 //     breakout + rejection at the top of the range), LPSY mirrors LPS (low-volume pullback that
-//     confirms a broken support as new resistance).
+//     confirms a broken support as new resistance). evaluateWyckoffEntry() above implements both
+//     sides through a single direction-parameterized path instead of two near-duplicate blocks.
 //   - SOS and SOW are seed-only events (used to detect LPS/LPSY) and are never traded directly —
 //     validated earlier on real BTC data that trading the raw breakout event dilutes win rate and
 //     profit factor versus waiting for the Spring/LPS (or UTAD/LPSY) confirmation.
@@ -120,91 +194,31 @@ function runWyckoffUnifiedStrategy(data, params, initialCapital, feePercent) {
     if (!event || atr[i] === null) continue;
     const c = data[i];
     const close = c.close;
-    const bullishCross = k[i - 1] !== null && d[i - 1] !== null && k[i] !== null && d[i] !== null &&
-      k[i - 1] <= d[i - 1] && k[i] > d[i];
-    const bearishCross = k[i - 1] !== null && d[i - 1] !== null && k[i] !== null && d[i] !== null &&
-      k[i - 1] >= d[i - 1] && k[i] < d[i];
     const range = c.high - c.low;
     const rangeHeight = rangeHigh[i] - rangeLow[i];
     // Fibonacci retracement position within the current Wyckoff range (0 = rangeLow, 1 = rangeHigh).
-    // Used only as a bonus confluence point below, not a hard requirement — validated on real BTC
-    // data (in-sample + a separate out-of-sample window) to raise the combined return from 10.55% to
-    // 15.31% at the same drawdown, without cutting into trade count.
+    // Used only as a bonus confluence point (see computeWyckoffScore), not a hard requirement —
+    // validated on real BTC data (in-sample + a separate out-of-sample window) to raise the combined
+    // return from 10.55% to 15.31% at the same drawdown, without cutting into trade count.
     const retracementRatio = rangeHeight > 0 ? (close - rangeLow[i]) / rangeHeight : 0.5;
-    const inFibZoneBull = retracementRatio >= 0.382 && retracementRatio <= 0.618;
-    const inFibZoneBear = (1 - retracementRatio) >= 0.382 && (1 - retracementRatio) <= 0.618;
 
-    if (event === 'SPRING' || event === 'LPS') {
-      let score = 0;
-      if (k[i] !== null && k[i] < stochBuy) score++;
-      if (bullishCross) score++;
-      if (inFibZoneBull) score++;
-      // Entries require a genuine rejection candle (close near the top of its range) and price not
-      // already extended far below trend
-      const rejectionStrength = range > 0 ? (c.close - c.low) / range : 0;
-      const strongCandle = rejectionStrength >= minRejection;
-      // Primary trend gate: price vs its own rolling volume-weighted value area (VWAP), not just a
-      // moving average — validated on real BTC data to raise win rate and profit factor substantially.
-      // Additionally requires EMA21 above EMA50 (a confirmed bullish structure, not just a momentary
-      // VWAP crossing) — validated on real BTC data to push profit factor and win rate further still,
-      // at the cost of fewer, more selective trades.
-      const trendOk = (vwap[i] === null || close > vwap[i] * 0.97) &&
-        (ema21[i] === null || ema50[i] === null || ema21[i] > ema50[i]);
-      // Trend-continuation entries (LPS) additionally require price to already be above the macro EMA
-      if (event === 'LPS' && emaTrend[i] !== null && close < emaTrend[i]) score--;
+    const isBullishEvent = event === 'SPRING' || event === 'LPS';
+    const isBearishEvent = event === 'UTAD' || event === 'LPSY';
+    if (!isBullishEvent && !isBearishEvent) continue;
 
-      if (score >= 1 && strongCandle && trendOk) {
-        signals[i] = 'BUY';
-        eventLabels[i] = event;
-        // Risk defined by the structure itself: stop below the trigger candle's own low (the level
-        // that invalidates the Spring/LPS read). Target follows Wyckoff's Cause & Effect: a Spring
-        // aims for the full range height (Creek/TP1); an LPS is a retest of an *already broken*
-        // Creek, so its reward has to be projected one range-height beyond that breakout, or the
-        // "target" would sit right where price already is. If a confirmed major resistance (multi-
-        // candle swing pivot, more reliable than the local rolling range alone) sits closer than that
-        // projection, target it instead — validated on real BTC data to raise the win/loss ratio and
-        // profit factor substantially versus the local projection alone. tpFraction then scales the
-        // chosen target back to a nearer, higher-probability level.
-        let fullTarget = event === 'SPRING' ? rangeHigh[i] : rangeHigh[i] + rangeHeight;
-        const nearestResistance = nearestLevelAbove(knownResistances, close);
-        if (nearestResistance !== null && nearestResistance > close) fullTarget = nearestResistance;
-        // Stop sized to actual volatility (ATR) rather than a fixed percentage: whichever is closer
-        // to price between the raw wick low and an ATR-scaled floor below the close. This tightens
-        // the stop in calm conditions (smaller realized losses) and widens it automatically in
-        // volatile conditions (avoids getting whipsawed out before the setup can play out) —
-        // validated on real BTC data to raise both total return and the average win/loss ratio
-        // versus a flat percentage buffer.
-        stopLossLevels[i] = Math.min(c.low, close - atr[i] * atrMult);
-        takeProfitLevels[i] = close + (fullTarget - close) * tpFraction;
-      }
-    } else if (event === 'UTAD' || event === 'LPSY') {
-      let score = 0;
-      if (k[i] !== null && k[i] > stochSell) score++;
-      if (bearishCross) score++;
-      if (inFibZoneBear) score++;
-      // Mirror of the bullish rejection filter: close near the bottom of its own range
-      const rejectionStrength = range > 0 ? (c.high - c.close) / range : 0;
-      const strongCandle = rejectionStrength >= minRejection;
-      // Mirror of the long side's VWAP + EMA21/50 trend gate.
-      const trendOk = (vwap[i] === null || close < vwap[i] * 1.03) &&
-        (ema21[i] === null || ema50[i] === null || ema21[i] < ema50[i]);
-      // Trend-continuation entries (LPSY) additionally require price to already be below the macro EMA
-      if (event === 'LPSY' && emaTrend[i] !== null && close > emaTrend[i]) score--;
+    const direction = isBullishEvent ? 1 : -1;
+    const ctx = {
+      c, close, range, rangeHeight, rangeHigh, rangeLow, k, d, emaTrend, vwap, ema21, ema50, atr,
+      stochBuy, stochSell, minRejection, atrMult, tpFraction, knownSupports, knownResistances,
+      fibPos: direction === 1 ? retracementRatio : 1 - retracementRatio
+    };
+    const result = evaluateWyckoffEntry(i, event, direction, ctx);
+    if (!result) continue;
 
-      if (score >= 1 && strongCandle && trendOk) {
-        signals[i] = 'SHORT';
-        eventLabels[i] = event;
-        // Mirror of the long side: stop above the trigger candle's own high, target follows the
-        // same Cause & Effect logic projected downward, preferring a confirmed major support if
-        // it's closer than the local projection.
-        let fullTarget = event === 'UTAD' ? rangeLow[i] : rangeLow[i] - rangeHeight;
-        const nearestSupport = nearestLevelBelow(knownSupports, close);
-        if (nearestSupport !== null && nearestSupport < close) fullTarget = nearestSupport;
-        // Mirror of the long side's ATR-scaled stop, above the trigger candle's own high.
-        stopLossLevels[i] = Math.max(c.high, close + atr[i] * atrMult);
-        takeProfitLevels[i] = close - (close - fullTarget) * tpFraction;
-      }
-    }
+    signals[i] = direction === 1 ? 'BUY' : 'SHORT';
+    eventLabels[i] = event;
+    stopLossLevels[i] = result.stopLoss;
+    takeProfitLevels[i] = result.takeProfit;
   }
 
   // Fallback exit: momentum reverses clearly against the open position, used only when no

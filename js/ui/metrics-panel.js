@@ -44,13 +44,15 @@ class MetricsPanel {
   }
 
   /**
-   * Sets the panel into an error state.
-   * @param {string} errorMessage 
+   * Sets the panel into an error state. Non-blocking: uses the same toast mechanism as
+   * live alerts instead of window.alert(), which would freeze every strategy tab's UI thread
+   * (WebSocket ticks included) until dismissed.
+   * @param {string} errorMessage
    */
   setError(errorMessage) {
     if (this.statusDot) this.statusDot.className = CSS_CLASSES.DOT_LIVE_ERROR;
     if (this.statusText) this.statusText.textContent = 'Error: ' + errorMessage;
-    alert('Error en backtesting:\n' + errorMessage);
+    showVisualToast('Error en backtesting', errorMessage);
   }
 
   /**

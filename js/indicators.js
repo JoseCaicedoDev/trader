@@ -26,16 +26,25 @@ function calculateATR(data, period) {
 // standard adaptation. Used as the primary trend gate (price above/below its own volume-weighted
 // value area), validated on real BTC data to raise win rate and profit factor substantially over
 // a plain EMA trend filter.
+// Sliding-window sum (not recomputed from scratch per candle): O(n) instead of O(n*period).
+// Matters because the live-tick path reruns the full strategy over ~1000 candles every 1.5s.
 function calculateRollingVWAP(data, period) {
   const n = data.length;
   const vwap = new Array(n).fill(null);
-  for (let i = period - 1; i < n; i++) {
-    let sumPV = 0, sumV = 0;
-    for (let j = i - period + 1; j <= i; j++) {
-      const tp = (data[j].high + data[j].low + data[j].close) / 3;
-      sumPV += tp * data[j].volume;
-      sumV += data[j].volume;
-    }
+  if (period > n) return vwap;
+
+  const typicalPV = (c) => ((c.high + c.low + c.close) / 3) * c.volume;
+
+  let sumPV = 0, sumV = 0;
+  for (let j = 0; j < period; j++) {
+    sumPV += typicalPV(data[j]);
+    sumV += data[j].volume;
+  }
+  vwap[period - 1] = sumV > 0 ? sumPV / sumV : null;
+
+  for (let i = period; i < n; i++) {
+    sumPV += typicalPV(data[i]) - typicalPV(data[i - period]);
+    sumV += data[i].volume - data[i - period].volume;
     vwap[i] = sumV > 0 ? sumPV / sumV : null;
   }
   return vwap;

@@ -3,17 +3,27 @@
 //
 // A reusable class that manages the checklist panel displaying live trend structures
 // (VWAP, EMA alignment, Stochastic RSI, and open trade details).
+//
+// Strategy-specific presentation (which EMA periods to name, how many price decimals) is
+// injected via the constructor rather than branched on a hardcoded strategy-type string —
+// adding a Strategy 4 requires zero changes here (Open/Closed Principle). Whether to render the
+// Wyckoff-only extras (event badge + Stochastic RSI) is decided per-update by duck-typing the
+// `state` object shape (`'lastEvent' in state`), matching the documented contract that all
+// strategy states share one interface and extra fields are simply ignored (Liskov Substitution).
 
 class SignalPanel {
   /**
    * @param {HTMLElement} viewRoot - Cloned template root DOM element
-   * @param {string} type - Strategy type ('wyckoff' or 'emacross')
-   * @param {boolean} isEthTimeframe - Whether to show 2 decimal places for ETH price
+   * @param {Object} options
+   * @param {number} options.emaFastLabel - Fast EMA period to display (e.g. 21)
+   * @param {number} options.emaSlowLabel - Slow EMA period to display (e.g. 30 or 50)
+   * @param {number} options.priceDecimals - Decimal places for formatted prices (0 for BTC, 2 for ETH)
    */
-  constructor(viewRoot, type = 'wyckoff', isEthTimeframe = false) {
+  constructor(viewRoot, { emaFastLabel = 21, emaSlowLabel = 50, priceDecimals = 0 } = {}) {
     this.viewRoot = viewRoot;
-    this.type = type;
-    this.isEthTimeframe = isEthTimeframe;
+    this.emaFastLabel = emaFastLabel;
+    this.emaSlowLabel = emaSlowLabel;
+    this.priceDecimals = priceDecimals;
 
     // Common checklist items
     this.vwapDot = viewRoot.querySelector('.chk-vwap-dot');
@@ -24,12 +34,12 @@ class SignalPanel {
     this.posText = viewRoot.querySelector('.chk-position-text');
     this.posDetail = viewRoot.querySelector('.signal-position-detail');
 
-    // Strategy 1 specific items
+    // Wyckoff-only items (present in the DOM for every strategy, toggled visible via CSS in
+    // main.js; only ever populated here when the live state includes Wyckoff-shaped fields)
     this.eventBadge = viewRoot.querySelector('.signal-event-badge');
     this.stochDot = viewRoot.querySelector('.chk-stoch-dot');
     this.stochText = viewRoot.querySelector('.chk-stoch-text');
 
-    // Strategy 1 position details
     this.posEntry = viewRoot.querySelector('.pos-entry');
     this.posSl = viewRoot.querySelector('.pos-sl');
     this.posTp = viewRoot.querySelector('.pos-tp');
@@ -42,91 +52,82 @@ class SignalPanel {
    */
   update(state) {
     if (!state) return;
+    this.updateVwapCheck(state);
+    this.updateEmaCheck(state);
+    if ('lastEvent' in state) this.updateWyckoffExtras(state);
+    this.updatePositionCheck(state);
+  }
 
-    // 1. VWAP Check
-    if (this.vwapDot && this.vwapText) {
-      if (state.vwap !== null) {
-        this.vwapDot.className = state.aboveVwap ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
-        this.vwapText.textContent = (state.aboveVwap ? 'Precio arriba (alcista)' : 'Precio abajo (bajista)') +
-          ' — $' + formatPrice(state.vwap, this.isEthTimeframe ? 2 : 0);
-      } else {
-        this.vwapDot.className = CSS_CLASSES.DOT_NEUTRAL;
-        this.vwapText.textContent = 'Calculando...';
-      }
+  /** Renders the VWAP trend-gate row. */
+  updateVwapCheck(state) {
+    if (!this.vwapDot || !this.vwapText) return;
+    if (state.vwap === null) {
+      this.vwapDot.className = CSS_CLASSES.DOT_NEUTRAL;
+      this.vwapText.textContent = 'Calculando...';
+      return;
     }
+    this.vwapDot.className = state.aboveVwap ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
+    this.vwapText.textContent = (state.aboveVwap ? 'Precio arriba (alcista)' : 'Precio abajo (bajista)') +
+      ' — $' + formatPrice(state.vwap, this.priceDecimals);
+  }
 
-    // 2. EMA Structure Check
-    if (this.emaDot && this.emaText) {
-      if (state.bullishStructure !== null) {
-        this.emaDot.className = state.bullishStructure ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
-        if (this.type === 'wyckoff') {
-          this.emaText.textContent = state.bullishStructure ? 'Estructura alcista (21>50)' : 'Estructura bajista (21<50)';
-        } else if (this.isEthTimeframe) {
-          this.emaText.textContent = state.bullishStructure ? 'EMA19 > EMA45 (alcista)' : 'EMA19 < EMA45 (bajista)';
-        } else {
-          this.emaText.textContent = state.bullishStructure ? 'EMA21 > EMA30 (alcista)' : 'EMA21 < EMA30 (bajista)';
-        }
-      } else {
-        this.emaDot.className = CSS_CLASSES.DOT_NEUTRAL;
-        this.emaText.textContent = 'Calculando...';
-      }
+  /** Renders the EMA structure row using the injected fast/slow period labels. */
+  updateEmaCheck(state) {
+    if (!this.emaDot || !this.emaText) return;
+    if (state.bullishStructure === null) {
+      this.emaDot.className = CSS_CLASSES.DOT_NEUTRAL;
+      this.emaText.textContent = 'Calculando...';
+      return;
     }
+    this.emaDot.className = state.bullishStructure ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
+    const comparator = state.bullishStructure ? '>' : '<';
+    const trend = state.bullishStructure ? 'alcista' : 'bajista';
+    this.emaText.textContent = `EMA${this.emaFastLabel} ${comparator} EMA${this.emaSlowLabel} (${trend})`;
+  }
 
-    // 3. Wyckoff Event & Stochastic RSI Check (Strategy 1 Only)
-    if (this.type === 'wyckoff') {
-      if (this.eventBadge) {
-        if (state.lastEvent) {
-          this.eventBadge.textContent = 'Evento detectado: ' + (EVENT_LABELS[state.lastEvent] || state.lastEvent);
-          this.eventBadge.className = CSS_CLASSES.BADGE_EVENT_ACTIVE;
-        } else {
-          this.eventBadge.textContent = 'Sin evento Wyckoff activo';
-          this.eventBadge.className = CSS_CLASSES.BADGE_EVENT_INACTIVE;
-        }
-      }
-
-      if (this.stochDot && this.stochText) {
-        if (state.stochK !== null) {
-          const kStr = state.stochK.toFixed(0);
-          if (state.stochOversold) {
-            this.stochDot.className = CSS_CLASSES.DOT_OK;
-            this.stochText.textContent = 'Sobrevendido (%K=' + kStr + ')';
-          } else if (state.stochOverbought) {
-            this.stochDot.className = CSS_CLASSES.DOT_OK;
-            this.stochText.textContent = 'Sobrecomprado (%K=' + kStr + ')';
-          } else {
-            this.stochDot.className = CSS_CLASSES.DOT_NEUTRAL;
-            this.stochText.textContent = 'Zona neutral (%K=' + kStr + ')';
-          }
-        } else {
-          this.stochDot.className = CSS_CLASSES.DOT_NEUTRAL;
-          this.stochText.textContent = 'Calculando...';
-        }
-      }
+  /** Renders the Wyckoff event badge + Stochastic RSI row (only called for Wyckoff-shaped state). */
+  updateWyckoffExtras(state) {
+    if (this.eventBadge) {
+      const hasEvent = Boolean(state.lastEvent);
+      this.eventBadge.textContent = hasEvent
+        ? 'Evento detectado: ' + (EVENT_LABELS[state.lastEvent] || state.lastEvent)
+        : 'Sin evento Wyckoff activo';
+      this.eventBadge.className = hasEvent ? CSS_CLASSES.BADGE_EVENT_ACTIVE : CSS_CLASSES.BADGE_EVENT_INACTIVE;
     }
+    if (!this.stochDot || !this.stochText) return;
+    if (state.stochK === null) {
+      this.stochDot.className = CSS_CLASSES.DOT_NEUTRAL;
+      this.stochText.textContent = 'Calculando...';
+      return;
+    }
+    const kStr = state.stochK.toFixed(0);
+    this.stochDot.className = (state.stochOversold || state.stochOverbought) ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_NEUTRAL;
+    this.stochText.textContent = state.stochOversold ? `Sobrevendido (%K=${kStr})`
+      : state.stochOverbought ? `Sobrecomprado (%K=${kStr})`
+      : `Zona neutral (%K=${kStr})`;
+  }
 
-    // 4. Open Position Checklist & Panel Details
-    if (this.posDot && this.posText) {
-      if (state.openTrade) {
-        const t = state.openTrade;
-        this.posDot.className = t.unrealizedPct >= 0 ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
-        this.posText.textContent = t.direction + (t.unrealizedPct >= 0 ? ' en ganancia' : ' en pérdida');
-        
-        if (this.posDetail) {
-          this.posDetail.classList.remove('hidden');
-          if (this.posEntry) this.posEntry.textContent = '$' + formatPrice(t.entryPrice);
-          if (this.posSl) this.posSl.textContent = t.stopLoss !== null ? '$' + formatPrice(t.stopLoss) : '-';
-          if (this.posTp) this.posTp.textContent = t.takeProfit !== null ? '$' + formatPrice(t.takeProfit) : '-';
-          
-          if (this.posPnl) {
-            this.posPnl.textContent = (t.unrealizedPct >= 0 ? '+' : '') + t.unrealizedPct.toFixed(2) + '%';
-            this.posPnl.className = t.unrealizedPct >= 0 ? 'text-neon-emerald font-bold' : 'text-neon-rose font-bold';
-          }
-        }
-      } else {
-        this.posDot.className = CSS_CLASSES.DOT_NEUTRAL;
-        this.posText.textContent = 'Sin posición';
-        if (this.posDetail) this.posDetail.classList.add('hidden');
-      }
+  /** Renders the open-position summary row and detail panel (entry/SL/TP/unrealized P&L). */
+  updatePositionCheck(state) {
+    if (!this.posDot || !this.posText) return;
+    if (!state.openTrade) {
+      this.posDot.className = CSS_CLASSES.DOT_NEUTRAL;
+      this.posText.textContent = 'Sin posición';
+      if (this.posDetail) this.posDetail.classList.add('hidden');
+      return;
+    }
+    const t = state.openTrade;
+    this.posDot.className = t.unrealizedPct >= 0 ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
+    this.posText.textContent = t.direction + (t.unrealizedPct >= 0 ? ' en ganancia' : ' en pérdida');
+    if (!this.posDetail) return;
+
+    this.posDetail.classList.remove('hidden');
+    if (this.posEntry) this.posEntry.textContent = '$' + formatPrice(t.entryPrice);
+    if (this.posSl) this.posSl.textContent = t.stopLoss !== null ? '$' + formatPrice(t.stopLoss) : '-';
+    if (this.posTp) this.posTp.textContent = t.takeProfit !== null ? '$' + formatPrice(t.takeProfit) : '-';
+    if (this.posPnl) {
+      this.posPnl.textContent = (t.unrealizedPct >= 0 ? '+' : '') + t.unrealizedPct.toFixed(2) + '%';
+      this.posPnl.className = t.unrealizedPct >= 0 ? 'text-neon-emerald font-bold' : 'text-neon-rose font-bold';
     }
   }
 }

@@ -12,11 +12,14 @@ class ChartManager {
    * @param {HTMLElement} priceContainer - DOM element for the price candlestick chart
    * @param {HTMLElement} equityContainer - DOM element for the equity line chart
    * @param {string} accentColor - Hex code representing the theme color (cyan, purple, etc.)
+   * @param {Object} eventLabels - Event-code -> display-name map (injected, not read from a
+   *   global) so this Layer 2 file never depends on the Layer 3 constant defined in dom-utils.js.
    */
-  constructor(priceContainer, equityContainer, accentColor) {
+  constructor(priceContainer, equityContainer, accentColor, eventLabels = {}) {
     this.priceContainer = priceContainer;
     this.equityContainer = equityContainer;
     this.accentColor = accentColor;
+    this.eventLabels = eventLabels;
 
     this.priceChart = null;
     this.equityChart = null;
@@ -243,8 +246,8 @@ class ChartManager {
   }
 
   formatEntryMarkerText(direction, price, eventCode) {
-    const known = eventCode && EVENT_LABELS[eventCode] && eventCode !== 'EMA_CROSS_UP' && eventCode !== 'EMA_CROSS_DOWN';
-    const prefix = known ? EVENT_LABELS[eventCode] + ' · ' : '';
+    const known = eventCode && this.eventLabels[eventCode] && eventCode !== 'EMA_CROSS_UP' && eventCode !== 'EMA_CROSS_DOWN';
+    const prefix = known ? this.eventLabels[eventCode] + ' · ' : '';
     return prefix + direction + ' $' + price.toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
 

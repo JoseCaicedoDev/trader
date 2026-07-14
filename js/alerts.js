@@ -5,7 +5,10 @@
 //
 // Exposes global alert functions to live-feed.js. Must load after ui.js and before live-feed.js.
 
+// Capped at MAX_ALERTED_KEYS to avoid unbounded growth over a long-running tab: evicts the
+// oldest entries (Sets preserve insertion order) once the cap is hit.
 const lastAlertedKeys = new Set();
+const MAX_ALERTED_KEYS = 500;
 
 // Synchronize all settings checkboxes
 // Will be called explicitly by main.js after DOM rendering
@@ -95,6 +98,9 @@ function checkAndTriggerAlert(symbol, strategyName, price, signalType, timestamp
   // Deduplicate alerts: avoid alerting multiple times for the same candle bar + direction
   const key = `${symbol}_${strategyName}_${timestamp}_${signalType}`;
   if (lastAlertedKeys.has(key)) return;
+  if (lastAlertedKeys.size >= MAX_ALERTED_KEYS) {
+    lastAlertedKeys.delete(lastAlertedKeys.values().next().value);
+  }
   lastAlertedKeys.add(key);
 
   const direction = signalType === 'BUY' ? 'LONG 🟢' : 'SHORT 🔴';

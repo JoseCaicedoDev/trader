@@ -33,6 +33,7 @@ const CSS_CLASSES = Object.freeze({
   
   BADGE_EVENT_ACTIVE: 'text-xs font-semibold px-2.5 py-1 rounded-full bg-neon-purple/15 text-neon-purple border border-neon-purple/20 w-fit',
   BADGE_EVENT_INACTIVE: 'text-xs font-semibold px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/8 w-fit',
+  BADGE_EVENT_ENTRY: 'inline-block px-2 py-0.5 rounded text-xs font-semibold text-center bg-neon-purple/15 text-neon-purple border border-neon-purple/20',
   
   BADGE_DIRECTION_LONG: 'inline-block px-2 py-0.5 rounded text-xs font-semibold text-center bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/20',
   BADGE_DIRECTION_SHORT: 'inline-block px-2 py-0.5 rounded text-xs font-semibold text-center bg-neon-rose/15 text-neon-rose border border-neon-rose/20',
