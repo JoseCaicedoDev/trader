@@ -412,16 +412,16 @@ A full refactor plan has been created and approved to eliminate the current tech
 
 | Task | Status | Files involved |
 |---|---|---|
-| Extract `ChartManager` class (replaces 3 copy-paste `renderCharts*` blocks) | ⬜ Pending | `charts.js` → `js/chart/chart-manager.js` |
-| Extract `MetricsPanel` class (replaces `updateMetrics*` × 3) | ⬜ Pending | `ui.js` → `js/ui/metrics-panel.js` |
-| Extract `SignalPanel` class (replaces `updateSignalPanel*` × 3) | ⬜ Pending | `ui.js` → `js/ui/signal-panel.js` |
-| Extract `TradesTable` class (replaces `populateTradesTable*` × 3) | ⬜ Pending | `ui.js` → `js/ui/trades-table.js` |
-| Extract `StrategyView` class (replaces `setupTabs` + `setupStrategySwitcher`) | ⬜ Pending | `ui.js` → `js/ui/strategy-view.js` |
-| Extract `dom-utils.js` (CSS_CLASSES, EVENT_LABELS, formatDate, formatPrice) | ⬜ Pending | `ui.js` → `js/ui/dom-utils.js` |
-| Refactor `LiveFeed` as `EventTarget` class (eliminates cross-file coupling) | ⬜ Pending | `live-feed.js` → `js/data/live-feed.js` |
-| Refactor `main.js` as pure orchestrator | ⬜ Pending | `main.js` → `js/app/main.js` |
-| Add semantic HTML (`<main>`, `<nav>`, `<aside>`, `<section>`, ARIA roles) | ⬜ Pending | `index.html` |
-| Consolidate all `window.addEventListener('resize')` → single `ResizeObserver` | ⬜ Pending | `charts.js` (currently 3 listeners) |
-| Add `CSS_CLASSES` token object (eliminate hardcoded class strings in JS) | ⬜ Pending | `ui.js`, `live-feed.js` |
+| Extract `ChartManager` class (replaces 3 copy-paste `renderCharts*` blocks) | ✅ Done | `charts.js` → `js/chart/chart-manager.js` |
+| Extract `MetricsPanel` class (replaces `updateMetrics*` × 3) | ✅ Done | `ui.js` → `js/ui/metrics-panel.js` |
+| Extract `SignalPanel` class (replaces `updateSignalPanel*` × 3) | ✅ Done | `ui.js` → `js/ui/signal-panel.js` |
+| Extract `TradesTable` class (replaces `populateTradesTable*` × 3) | ✅ Done | `ui.js` → `js/ui/trades-table.js` |
+| Extract `StrategyView` class (replaces `setupTabs` + `setupStrategySwitcher`) | ✅ Done | `ui.js` → `js/ui/strategy-view.js` |
+| Extract `dom-utils.js` (CSS_CLASSES, EVENT_LABELS, formatDate, formatPrice) | ✅ Done | `ui.js` → `js/ui/dom-utils.js` |
+| Refactor `LiveFeed` as `EventTarget` class (eliminates cross-file coupling) | ✅ Done | `live-feed.js` → `js/data/live-feed.js` |
+| Refactor `main.js` as pure orchestrator | ✅ Done | `main.js` → `js/app/main.js` |
+| Add semantic HTML (`<main>`, `<nav>`, `<aside>`, `<section>`, ARIA roles) | ✅ Done | `index.html` |
+| Consolidate all `window.addEventListener('resize')` → single `ResizeObserver` | ✅ Done | `charts.js` (currently 3 listeners) |
+| Add `CSS_CLASSES` token object (eliminate hardcoded class strings in JS) | ✅ Done | `ui.js`, `live-feed.js` |
 
 **When implementing**: Do one task at a time. After each task, verify the app loads and metrics are unchanged before proceeding. Mark tasks `✅ Done` in this table when complete.
