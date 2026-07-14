@@ -12,8 +12,6 @@ const lastAlertedKeys = new Set();
 
 function initAlertManager() {
   const checkboxes = document.querySelectorAll('.chk-alert-sound');
-  const reqButtons = document.querySelectorAll('.btn-request-notifications');
-  const testButtons = document.querySelectorAll('.btn-test-alert');
 
   function syncCheckboxes(checked) {
     checkboxes.forEach(cb => {
@@ -22,90 +20,17 @@ function initAlertManager() {
   }
 
   checkboxes.forEach(cb => {
-    cb.addEventListener('change', (e) => syncCheckboxes(e.target.checked));
-  });
-
-  reqButtons.forEach(btn => {
-    btn.addEventListener('click', requestNotificationPermission);
-  });
-
-  testButtons.forEach(btn => {
-    btn.addEventListener('click', triggerTestAlert);
-  });
-
-  // Initialize visual permission status indicators
-  updatePermissionUI();
-}
-
-function requestNotificationPermission() {
-  if (!("Notification" in window)) {
-    showVisualToast("Error", "Este navegador no soporta notificaciones de escritorio.");
-    return;
-  }
-
-  Notification.requestPermission().then(permission => {
-    updatePermissionUI();
-    if (permission === "granted") {
-      showVisualToast("Notificaciones Activas 🔔", "Las alertas de señales ahora se enviarán a tu escritorio.");
-    } else if (permission === "denied") {
-      showVisualToast("Notificaciones Bloqueadas ⚠️", "Habilita los permisos de notificación en tu navegador para recibir alertas.");
-    }
-  });
-}
-
-function updatePermissionUI() {
-  const permission = Notification.permission;
-  const dots = document.querySelectorAll('.alerts-status-dot');
-  const buttons = document.querySelectorAll('.btn-request-notifications');
-
-  const okDot = 'w-1.5 h-1.5 rounded-full inline-block bg-neon-emerald shadow-[0_0_6px_#00e676]';
-  const badDot = 'w-1.5 h-1.5 rounded-full inline-block bg-neon-rose shadow-[0_0_6px_#ff1744]';
-  const neutralDot = 'w-1.5 h-1.5 rounded-full inline-block bg-gray-500';
-
-  let dotClass = neutralDot;
-  let btnText = "Permitir Alertas";
-
-  if (permission === 'granted') {
-    dotClass = okDot;
-    btnText = "Alertas Activas";
-  } else if (permission === 'denied') {
-    dotClass = badDot;
-    btnText = "Alertas Bloqueadas";
-  }
-
-  dots.forEach(dot => {
-    if (dot) dot.className = dotClass;
-  });
-
-  buttons.forEach(btn => {
-    if (btn) {
-      const textSpan = btn.querySelector('span:not(.alerts-status-dot)') || btn;
-      if (textSpan) {
-        textSpan.textContent = btnText;
+    cb.addEventListener('change', (e) => {
+      syncCheckboxes(e.target.checked);
+      if (e.target.checked && "Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            showVisualToast("Notificaciones Activas 🔔", "Las alertas de señales ahora se enviarán a tu escritorio.");
+          }
+        });
       }
-      if (permission === 'granted') {
-        btn.classList.add('bg-neon-emerald/10', 'text-neon-emerald', 'border-neon-emerald/25');
-        btn.classList.remove('bg-white/5', 'text-gray-300', 'border-white/8');
-      } else if (permission === 'denied') {
-        btn.classList.add('bg-neon-rose/10', 'text-neon-rose', 'border-neon-rose/25');
-        btn.classList.remove('bg-white/5', 'text-gray-300', 'border-white/8');
-      } else {
-        btn.classList.add('bg-white/5', 'text-gray-300', 'border-white/8');
-        btn.classList.remove('bg-neon-emerald/10', 'text-neon-emerald', 'border-neon-emerald/25', 'bg-neon-rose/10', 'text-neon-rose', 'border-neon-rose/25');
-      }
-    }
-  });
-}
-
-function triggerTestAlert() {
-  playNotificationSound("BUY");
-  showVisualToast("Prueba de Alerta LONG 🟢", "La confluencia de volumen y el oscilador Stochastic RSI han activado una señal.");
-  if (Notification.permission === 'granted') {
-    new Notification("Prueba de Alerta: BTC/USDT", {
-      body: "La estrategia Wyckoff Unificada ha detectado un Spring en BTC/USDT a un precio de $64,200",
-      tag: "test-alert"
     });
-  }
+  });
 }
 
 // Generates custom synth sounds so we don't rely on external audio file hosting
