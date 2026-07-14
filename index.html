@@ -54,7 +54,7 @@
     }
   </style>
 </head>
-<body class="bg-dark-bg text-gray-100 min-h-screen overflow-x-hidden font-['Outfit'] antialiased relative">
+<body class="bg-dark-bg text-gray-100 h-screen overflow-hidden font-['Outfit'] antialiased relative flex flex-col">
 
   <!-- Background Glowing Orbs (Corrected Stacking Context: z-0 behind relative z-10 content) -->
   <div class="absolute w-[600px] h-[600px] rounded-full bg-neon-cyan/15 blur-[150px] pointer-events-none top-0 right-0 z-0"></div>
@@ -92,14 +92,14 @@
   </nav>
 
   <!-- Dynamic App container where strategy views will be instantiated -->
-  <main id="app-container" class="relative z-10 flex flex-col min-h-screen w-full"></main>
+  <main id="app-container" class="relative z-10 flex-1 min-h-0 w-full"></main>
 
   <!-- Reusable HTML5 Component Template for Strategy Views -->
   <template id="strategy-view-template">
-    <div class="strategy-view flex flex-col lg:flex-row min-h-screen relative z-10 hidden">
+    <div class="strategy-view flex flex-col lg:flex-row h-full relative z-10 hidden">
 
       <!-- Sidebar: live signal state + key metrics -->
-      <aside class="w-full lg:w-[340px] shrink-0 bg-dark-sidebar/60 border-b lg:border-b-0 lg:border-r border-white/8 p-4 lg:p-5 flex flex-col gap-5 lg:h-screen lg:overflow-y-auto">
+      <aside class="w-full lg:w-[340px] shrink-0 bg-dark-sidebar/60 border-b lg:border-b-0 lg:border-r border-white/8 p-4 lg:p-5 flex flex-col gap-5 lg:h-full lg:overflow-y-auto">
         <div class="flex items-center gap-3">
           <svg class="strategy-icon h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></svg>
           <h1 class="strategy-title text-lg font-bold tracking-wide bg-gradient-to-r bg-clip-text text-transparent"></h1>
@@ -205,7 +205,7 @@
       </aside>
 
       <!-- Main Dashboard Area: charts get the spotlight -->
-      <div class="flex-1 p-4 lg:p-8 flex flex-col gap-6 overflow-y-auto max-h-screen w-full">
+      <div class="flex-1 p-4 lg:p-8 flex flex-col gap-6 overflow-y-auto h-full w-full">
         <!-- Tab Navigation -->
         <div class="flex items-center gap-2 border-b border-white/8" role="tablist">
           <button type="button" data-tab="chart" role="tab" class="tab-btn active-tab flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 text-white transition-colors">
