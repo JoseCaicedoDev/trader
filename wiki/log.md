@@ -1,6 +1,15 @@
 # Bitácora de Operaciones (Wiki Log)
 
 Registro cronológico y persistente de todas las operaciones realizadas sobre la base de conocimientos del LLM Wiki (ingestas, modificaciones, auditorías y simulaciones).
+## [2026-07-14] ingest | Refactorización de Clean Architecture y Template DRY HTML5
+- Implementada la Fase 2 a 6 de la refactorización DRY/SOLID aprobada en el plan.
+- Reemplazada la duplicación masiva en `index.html` con un único `<template id="strategy-view-template">` reduciendo el archivo en un **60%** (de 714 a 311 líneas).
+- Adaptados todos los componentes de UI (`MetricsPanel`, `SignalPanel`, `TradesTable`, `StrategyView`) para realizar búsquedas relativas a la raíz del template clonado (`viewRoot`).
+- Modificado `main.js` para instanciar dinámicamente las tres vistas a partir del array de configuraciones `STRATEGIES_CONFIG`, reduciendo la duplicación y permitiendo escalabilidad ilimitada.
+- Adaptado `alerts.js` para enlazar los selectores de sonidos, pruebas y solicitudes a notificaciones mediante clases, sincronizando los estados de forma global.
+- Verificado el correcto funcionamiento del dashboard en el navegador sin errores y desplegado en producción en GitHub Pages.
+
+---
 
 ## [2026-07-13] ingest | Sistema de Alertas y Notificaciones en Vivo
 - Creado módulo [alerts.js](file:///c:/Users/gira/Desktop/backtesting/js/alerts.js) para gestionar las notificaciones y alarmas.
