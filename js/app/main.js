@@ -24,7 +24,7 @@ const STRATEGIES_CONFIG = [
   },
   {
     key: 'emacross',
-    title: 'VWAP + Cruce EMA 21/30',
+    title: 'VWAP + Cruce EMA 24/30',
     symbol: 'BTCUSDT',
     timeframe: '4h',
     accentColor: 'purple',

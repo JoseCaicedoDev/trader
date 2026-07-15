@@ -10,19 +10,27 @@ const STRATEGY_PARAMS = {
   rsiPeriod: 14, stochPeriod: 24, stochK: 4, stochD: 3, stochBuy: 20, stochSell: 85
 };
 
-// Strategy 2 (reference/comparison): "triple cross" of EMA21, EMA30 and VWAP — entry fires the
-// instant all three lines settle into full bullish/bearish alignment (whichever pairwise cross
+// Strategy 2 (reference/comparison): "triple cross" of EMA-fast, EMA-slow and VWAP — entry fires
+// the instant all three lines settle into full bullish/bearish alignment (whichever pairwise cross
 // completes it), and a position is held until either SL/TP fires or the full opposite alignment
-// forms (no early exit on a partial breakdown). Simpler and more classic than the Wyckoff system —
-// validated against the app's own live window (current ~1000-candle 4h dataset, ~13 trades) and
-// confirmed stable across the full neighborhood of nearby EMA/VWAP periods (18-24 / 25-35 / 65-95),
-// unlike a tempting-looking fast=7/slow=15/vwap=20 candidate that collapsed from +39% to -34% on a
-// 10-period VWAP shift (classic overfitting, rejected). emaFast/emaSlow moved from 25/50 to 21/30 —
-// on the live app window this raised win rate 69.2% -> 76.5%, return 13.55% -> 31.40%, and lowered
-// drawdown 9.23% -> 4.37%, all at once. Still a smaller trade sample than the Wyckoff strategy's, so
-// treat with slightly more caution — kept as a side-by-side comparison view, not a recommended default.
+// forms (no early exit on a partial breakdown). Simpler and more classic than the Wyckoff system.
+//
+// The previous 21/30/80/2.0/1.0 params were validated only against the live app window (~1000
+// candles). Re-validating on FIVE non-overlapping 1000-candle windows (~2.3 years, 2024-04 to
+// 2026-07) exposed that they actually lose in 2 of the 5 (-3.4%, -13.9% with 26.1% drawdown) —
+// never caught because that methodology didn't exist yet when they were picked.
+//
+// Grid sweep across the same 5 windows (~639k combos total across a wide pass + two finer passes
+// on the promising regions, requiring >=12 closed trades/window to keep the current trade
+// frequency) found emaFast=24/emaSlow=30/vwapPeriod=105/atrMult=3.75/rrRatio=0.5: positive on ALL 5
+// windows (avg return +20.4%/window, avg win rate 81.6%, avg drawdown 7.3%, worst window still
+// +11.5% return / 73.3% win rate), a large improvement on every axis over the old params (+2.6%
+// avg return, 56.1% avg win rate, 12.5% avg drawdown) at a similar trade frequency (14/window vs
+// 18.6/window). Confirmed not a lucky point: stable across neighbors in emaFast (20-28), emaSlow
+// (26-34), atrMult (3.25-4.25) and rrRatio (0.25-1.0) — the one sensitive dimension is vwapPeriod,
+// which drops to only 3-4/5 profitable windows below 100 (105-120 is the safe range).
 const STRATEGY2_PARAMS = {
-  emaFast: 21, emaSlow: 30, vwapPeriod: 80, atrPeriod: 14, atrMult: 2.0, rrRatio: 1.0
+  emaFast: 24, emaSlow: 30, vwapPeriod: 105, atrPeriod: 14, atrMult: 3.75, rrRatio: 0.5
 };
 
 const INITIAL_CAPITAL = 100;
