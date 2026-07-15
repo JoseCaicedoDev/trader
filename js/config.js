@@ -60,11 +60,15 @@ const STRATEGY3_PARAMS = {
 // Adding a VWAP trend gate — same rolling-VWAP filter as strategy-emacross.js, only take the cross
 // if price is on the matching side of VWAP, rejecting counter-trend crosses — fixed exactly that:
 // re-swept the same 5 windows with vwapPeriod added to the grid (5520 combos) and 63 combos are now
-// positive on ALL 5 windows (vs. 0 without the filter). maLen 82-86 at atrMult=2.0/vwapPeriod=100
-// forms a stable plateau there (confirmed by neighborhood: atrMult=1.5 and 2.5 either side both drop
-// to 2-3/5 positive, so this isn't a lucky single point). len=82 is the best point in it: avg win
-// rate 58.5%, avg drawdown 10.4% (both far better than the no-filter version), avg return +8.7%,
-// every one of the 5 non-overlapping windows individually profitable (worst window +0.5%).
+// positive on ALL 5 windows (vs. 0 without the filter). A finer follow-up sweep (maLen 50-100 step
+// 2 x atrMult 1.5-2.5 step 0.25 x rr 1.0-1.5 x vwapPeriod 70-140 step 10, 9360 combos; 90 of them
+// 5/5-positive) mapped the full plateau: alma / maLen 80-86 / atrMult=2.0 / rr=1 / vwapPeriod
+// 100-120, with atrMult 1.75 and 2.25 both dropping to 3-4/5 positive on its edges (so not a lucky
+// single point). len=80/vwap=120 is the best point in it — avg win rate 60.0% (worst window 55.0%),
+// avg drawdown 10.9% (worst window 14.3%), avg return +8.9%/window, and every one of the 5
+// non-overlapping windows individually profitable (worst window +1.3%). Chosen over the marginally
+// lower-avg-drawdown len=82/vwap=100 (10.4% but worst-window DD 15.5%, worst-window win rate 50.0%)
+// because it dominates on worst-case metrics, which is what robustness here is about.
 const STRATEGY4_PARAMS = {
-  maLen: 82, maMode: 'alma', atrPeriod: 14, atrMult: 2.0, rrRatio: 1.0, vwapPeriod: 100
+  maLen: 80, maMode: 'alma', atrPeriod: 14, atrMult: 2.0, rrRatio: 1.0, vwapPeriod: 120
 };
