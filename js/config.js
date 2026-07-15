@@ -50,17 +50,21 @@ const STRATEGY3_PARAMS = {
 // looked robust across 3 windows; re-run with the corrected direction, that same combo loses in 3
 // of 5 windows (-26%, -15%, -23%). All tuning below is post-fix.
 //
-// Grid (mode x maLen 10-100 x atrMult 1.5-4.0 x rr 1.0-3.0, 7590 combos) evaluated on FIVE
-// non-overlapping 1000-candle windows (~2.3 years, 2024-04 to 2026-07). Zero combos are positive on
-// all 5 — one window (2024-09 to 2025-03) is bad for nearly every parameterization (only 190/7590
-// combos profit in it at all), so "robust" here means best-of-4-of-5, not perfect. With the
-// direction fixed, win rate tops out around ~40-41% (well below Strategy 1/2's 60-75%) — this raw
-// crossover has no trend/volume confluence filter, so its edge comes from average win size beating
-// average loss size, not from a high hit rate. maLen 90-98 at atrMult=2.0/rr=1.5 forms a genuine
-// stable plateau (not a single lucky point): avg return +6% to +11%, avg drawdown 17-20%, avg win
-// rate 40-41% across all 5, each losing in only 1 of 5 windows. len=98 is the best point in that
-// plateau: avg return +11.4%/window, avg drawdown 16.8%, avg win rate 41.3%, worst single window
-// -8.9% (vs. -19% to -26% for nearby/other configs).
+// First grid (mode x maLen 10-100 x atrMult 1.5-4.0 x rr 1.0-3.0, 7590 combos) evaluated on FIVE
+// non-overlapping 1000-candle windows (~2.3 years, 2024-04 to 2026-07) with the raw ma3/ma4 cross
+// and no other filter: zero combos positive on all 5 windows, win rate topped out ~40-41% (well
+// below Strategy 1/2's 60-75%) — a raw crossover with no trend/volume confluence has its edge in
+// average win size beating average loss size, not in a high hit rate, and one window (2024-09 to
+// 2025-03) was bad for nearly every parameterization (190/7590 combos profited in it at all).
+//
+// Adding a VWAP trend gate — same rolling-VWAP filter as strategy-emacross.js, only take the cross
+// if price is on the matching side of VWAP, rejecting counter-trend crosses — fixed exactly that:
+// re-swept the same 5 windows with vwapPeriod added to the grid (5520 combos) and 63 combos are now
+// positive on ALL 5 windows (vs. 0 without the filter). maLen 82-86 at atrMult=2.0/vwapPeriod=100
+// forms a stable plateau there (confirmed by neighborhood: atrMult=1.5 and 2.5 either side both drop
+// to 2-3/5 positive, so this isn't a lucky single point). len=82 is the best point in it: avg win
+// rate 58.5%, avg drawdown 10.4% (both far better than the no-filter version), avg return +8.7%,
+// every one of the 5 non-overlapping windows individually profitable (worst window +0.5%).
 const STRATEGY4_PARAMS = {
-  maLen: 98, maMode: 'alma', atrPeriod: 14, atrMult: 2.0, rrRatio: 1.5
+  maLen: 82, maMode: 'alma', atrPeriod: 14, atrMult: 2.0, rrRatio: 1.0, vwapPeriod: 100
 };

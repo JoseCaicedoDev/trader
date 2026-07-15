@@ -64,7 +64,6 @@ const STRATEGIES_CONFIG = [
     strategyParams: STRATEGY4_PARAMS,
     runStrategy: runOracleMoveStrategy,
     showStochastic: false,
-    showVwap: false,
     maLabelPrefix: 'ma',
     emaFastLabel: '3',
     emaSlowLabel: '4'

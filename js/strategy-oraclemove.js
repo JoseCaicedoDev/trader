@@ -7,13 +7,18 @@
 // treats a cross between the two lines as the trend-turn signal. ma3 is the fast/de-lagged line and
 // ma4 is a further MA *of ma3*, i.e. structurally the slow/lagging line of the pair (same fast/slow
 // relationship as emaFast/emaSlow in strategy-emacross.js) — so bullish is ma3 crossing above ma4
-// (fast over slow), bearish is ma3 crossing below ma4, not the reverse. Stop/target sizing follows
-// the same ATR-scaled, fixed risk:reward approach as strategy-emacross.js for consistency — these
-// defaults have NOT been validated against real data the way the other strategies' params have, so
-// treat as a starting point rather than a tuned setting.
+// (fast over slow), bearish is ma3 crossing below ma4, not the reverse.
 //
-// Depends on: indicators.js (calculateATR, wmaSeries, emaSeries, almaSeries) and simulator.js
-// (runSimulator). Must load after both.
+// VWAP trend gate: a raw ma3/ma4 cross with no confluence filter only reaches ~40% win rate (see
+// config.js) — most of its losses are cross signals that fire against the broader trend and get
+// immediately reversed. Gating entries on price being on the correct side of a rolling VWAP (the
+// same trend filter strategy-emacross.js uses) rejects those counter-trend crosses instead of
+// trading them.
+//
+// Stop/target sizing follows the same ATR-scaled, fixed risk:reward approach as strategy-emacross.js.
+//
+// Depends on: indicators.js (calculateATR, calculateRollingVWAP, wmaSeries, emaSeries, almaSeries)
+// and simulator.js (runSimulator). Must load after both.
 function oracleMA(mode, values, period) {
   if (mode === 'alma') return almaSeries(values, period, 0.85, 6);
   if (mode === 'ema') return emaSeries(values, period);
@@ -21,7 +26,7 @@ function oracleMA(mode, values, period) {
 }
 
 function runOracleMoveStrategy(data, params, initialCapital, feePercent) {
-  const { maLen, maMode, atrPeriod, atrMult, rrRatio } = params;
+  const { maLen, maMode, atrPeriod, atrMult, rrRatio, vwapPeriod } = params;
   const n = data.length;
   const closes = data.map(c => c.close);
 
@@ -33,6 +38,7 @@ function runOracleMoveStrategy(data, params, initialCapital, feePercent) {
   }
   const ma4 = oracleMA(maMode, ma3, Math.max(1, Math.floor(Math.sqrt(maLen))));
   const atr = calculateATR(data, atrPeriod);
+  const vwap = calculateRollingVWAP(data, vwapPeriod);
 
   const signals = new Array(n).fill(null);
   const eventLabels = new Array(n).fill(null);
@@ -40,13 +46,18 @@ function runOracleMoveStrategy(data, params, initialCapital, feePercent) {
   const takeProfitLevels = new Array(n).fill(null);
 
   for (let i = 1; i < n; i++) {
-    if (ma3[i] === null || ma4[i] === null || ma3[i - 1] === null || ma4[i - 1] === null || atr[i] === null) continue;
+    if (ma3[i] === null || ma4[i] === null || ma3[i - 1] === null || ma4[i - 1] === null ||
+        atr[i] === null || vwap[i] === null) continue;
 
     const crossUp = ma3[i - 1] <= ma4[i - 1] && ma3[i] > ma4[i];
     const crossDown = ma3[i - 1] >= ma4[i - 1] && ma3[i] < ma4[i];
     if (!crossUp && !crossDown) continue;
 
     const close = data[i].close;
+    // Only take the cross if it agrees with the VWAP trend gate — reject counter-trend crosses.
+    if (crossUp && close <= vwap[i]) continue;
+    if (crossDown && close >= vwap[i]) continue;
+
     const stopDist = atr[i] * atrMult;
     signals[i] = crossUp ? 'BUY' : 'SHORT';
     eventLabels[i] = crossUp ? 'ORACLE_CROSS_UP' : 'ORACLE_CROSS_DOWN';
@@ -57,12 +68,13 @@ function runOracleMoveStrategy(data, params, initialCapital, feePercent) {
   const backtest = runSimulator(data, signals, initialCapital, feePercent, stopLossLevels, takeProfitLevels, eventLabels);
   backtest.eventLabels = eventLabels;
   backtest.indicators = [
+    { name: `VWAP (${vwapPeriod})`, type: 'line', data: vwap, color: '#00e5ff' },
     { name: 'Oracle ma3', type: 'line', data: ma3, color: '#2962ff' },
     { name: 'Oracle ma4', type: 'line', data: ma4, color: '#ff9800' }
   ];
 
   // Live signal state snapshot, same shape as the other strategies' currentState so
-  // updateSignalPanel2 can render it directly (vwap fields left null, unused by this strategy).
+  // updateSignalPanel2 can render it directly.
   const last = n - 1;
   const openTrade = (() => {
     for (let i = backtest.trades.length - 1; i >= 0; i--) {
@@ -74,8 +86,8 @@ function runOracleMoveStrategy(data, params, initialCapital, feePercent) {
   })();
   backtest.currentState = {
     price: data[last].close,
-    vwap: null,
-    aboveVwap: null,
+    vwap: vwap[last],
+    aboveVwap: vwap[last] !== null ? data[last].close > vwap[last] : null,
     bullishStructure: (ma3[last] !== null && ma4[last] !== null) ? ma3[last] > ma4[last] : null,
     signal: signals[last],
     openTrade: openTrade ? {
