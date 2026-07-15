@@ -4,8 +4,10 @@
 // two), and ma4 is a further MA of ma3 over sqrt(length) — with mode=wma this is exactly the
 // classic Hull Moving Average; ema/alma modes are smoother variants of the same construction. The
 // original script only plots ma3 (blue) and ma4 (orange) with no built-in signal; this strategy
-// treats a cross between the two lines as the trend-turn signal (ma4 crossing above ma3 = bullish
-// turn, below = bearish turn), the standard way this MA pair is traded. Stop/target sizing follows
+// treats a cross between the two lines as the trend-turn signal. ma3 is the fast/de-lagged line and
+// ma4 is a further MA *of ma3*, i.e. structurally the slow/lagging line of the pair (same fast/slow
+// relationship as emaFast/emaSlow in strategy-emacross.js) — so bullish is ma3 crossing above ma4
+// (fast over slow), bearish is ma3 crossing below ma4, not the reverse. Stop/target sizing follows
 // the same ATR-scaled, fixed risk:reward approach as strategy-emacross.js for consistency — these
 // defaults have NOT been validated against real data the way the other strategies' params have, so
 // treat as a starting point rather than a tuned setting.
@@ -40,8 +42,8 @@ function runOracleMoveStrategy(data, params, initialCapital, feePercent) {
   for (let i = 1; i < n; i++) {
     if (ma3[i] === null || ma4[i] === null || ma3[i - 1] === null || ma4[i - 1] === null || atr[i] === null) continue;
 
-    const crossUp = ma4[i - 1] <= ma3[i - 1] && ma4[i] > ma3[i];
-    const crossDown = ma4[i - 1] >= ma3[i - 1] && ma4[i] < ma3[i];
+    const crossUp = ma3[i - 1] <= ma4[i - 1] && ma3[i] > ma4[i];
+    const crossDown = ma3[i - 1] >= ma4[i - 1] && ma3[i] < ma4[i];
     if (!crossUp && !crossDown) continue;
 
     const close = data[i].close;
@@ -74,7 +76,7 @@ function runOracleMoveStrategy(data, params, initialCapital, feePercent) {
     price: data[last].close,
     vwap: null,
     aboveVwap: null,
-    bullishStructure: (ma3[last] !== null && ma4[last] !== null) ? ma4[last] > ma3[last] : null,
+    bullishStructure: (ma3[last] !== null && ma4[last] !== null) ? ma3[last] > ma4[last] : null,
     signal: signals[last],
     openTrade: openTrade ? {
       direction: openTrade.direction,

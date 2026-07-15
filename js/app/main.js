@@ -66,8 +66,8 @@ const STRATEGIES_CONFIG = [
     showStochastic: false,
     showVwap: false,
     maLabelPrefix: 'ma',
-    emaFastLabel: '4',
-    emaSlowLabel: '3'
+    emaFastLabel: '3',
+    emaSlowLabel: '4'
   }
 ];
 
