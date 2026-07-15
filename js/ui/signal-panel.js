@@ -19,12 +19,11 @@ class SignalPanel {
    * @param {number} options.emaSlowLabel - Slow EMA period to display (e.g. 30 or 50)
    * @param {number} options.priceDecimals - Decimal places for formatted prices (0 for BTC, 2 for ETH)
    */
-  constructor(viewRoot, { emaFastLabel = 21, emaSlowLabel = 50, priceDecimals = 0, maLabelPrefix = 'EMA' } = {}) {
+  constructor(viewRoot, { emaFastLabel = 21, emaSlowLabel = 50, priceDecimals = 0 } = {}) {
     this.viewRoot = viewRoot;
     this.emaFastLabel = emaFastLabel;
     this.emaSlowLabel = emaSlowLabel;
     this.priceDecimals = priceDecimals;
-    this.maLabelPrefix = maLabelPrefix;
 
     // Common checklist items
     this.vwapDot = viewRoot.querySelector('.chk-vwap-dot');
@@ -83,8 +82,7 @@ class SignalPanel {
     this.emaDot.className = state.bullishStructure ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
     const comparator = state.bullishStructure ? '>' : '<';
     const trend = state.bullishStructure ? 'alcista' : 'bajista';
-    const p = this.maLabelPrefix;
-    this.emaText.textContent = `${p}${this.emaFastLabel} ${comparator} ${p}${this.emaSlowLabel} (${trend})`;
+    this.emaText.textContent = `EMA${this.emaFastLabel} ${comparator} EMA${this.emaSlowLabel} (${trend})`;
   }
 
   /** Renders the Wyckoff event badge + Stochastic RSI row (only called for Wyckoff-shaped state). */

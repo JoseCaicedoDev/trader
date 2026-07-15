@@ -107,8 +107,7 @@ function checkAndTriggerAlert(symbol, strategyName, price, signalType, timestamp
   const strategyLabels = {
     wyckoff: 'Wyckoff Unificada',
     emacross: 'VWAP + EMA Cross',
-    eth: 'VWAP + EMA Cross',
-    oraclemove: 'Oracle Move'
+    eth: 'VWAP + EMA Cross'
   };
   const strategyLabel = strategyLabels[strategyName] || strategyName;
   const detail = eventLabel ? ` (${eventLabel})` : '';

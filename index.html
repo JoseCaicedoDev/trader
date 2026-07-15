@@ -78,10 +78,6 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         VWAP + EMA — ETH/USDT
       </button>
-      <button type="button" data-strategy="oraclemove" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-        Oracle Move — BTC/USDT
-      </button>
     </div>
 
     <!-- Global Alert Settings (Right) -->
@@ -133,7 +129,7 @@
           </div>
           <span class="signal-event-badge text-xs font-semibold px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/8 w-fit hidden">Sin evento Wyckoff activo</span>
           <div class="grid grid-cols-1 gap-2 text-xs">
-            <div class="chk-vwap-row flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
               <span class="chk-vwap-dot w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
               <span class="text-gray-400">VWAP: <span class="chk-vwap-text text-gray-300 font-medium">—</span></span>
             </div>
@@ -314,7 +310,6 @@
   <script src="js/simulator.js"></script>
   <script src="js/strategy-wyckoff.js"></script>
   <script src="js/strategy-emacross.js"></script>
-  <script src="js/strategy-oraclemove.js"></script>
   <script src="js/binance-api.js"></script>
   
   <!-- Layer 3 DOM Utilities -->
