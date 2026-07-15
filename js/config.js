@@ -42,8 +42,21 @@ const STRATEGY3_PARAMS = {
 
 // Strategy 4: "Oracle Move" — Hull-style double-MA (ma3/ma4 cross) ported from the "Oracle Move
 // [wm]" Pine Script indicator, applied to BTC/USDT 4h via Binance (same feed as Strategy 1/2).
-// maLen=30 and mode=wma match the indicator's own script defaults. NOT yet validated against real
-// data the way the other strategies' params are — a new addition, kept as-is until backtested.
+//
+// Params below replace the indicator's own script defaults (maLen=30, atrMult=2.0, rr=1.5) after a
+// grid sweep (mode x maLen 10-80 x atrMult 1.5-3.0 x rr 1.0-2.5, 768 combos) evaluated on THREE
+// non-overlapping 1000-candle windows, not just the live app window — the original sweep's
+// top-by-return candidates (e.g. len=60/atrMult=2.75, +29.6% on the live window) collapsed to -17%
+// on the very next window back, a textbook overfit. Only 8/768 combos stayed profitable across all
+// three windows; this is the best of those by worst-window return: avg +8.0%/window, worst window
+// still +2.7%, ~69.5% win rate, 15-23% max drawdown, PF 1.06-1.32 in every window tested — modest
+// but a genuine edge, not a lucky point.
+//
+// Also swept 1h and 1d timeframes the same way (same param grid, 3 non-overlapping windows each):
+// 0/768 combos held up on 1h (windows too short/noisy at ~40 days each for 1000 1h candles) and
+// 0/768 held up on 1d (windows spanning 2018-2026 cross multiple bull/bear regimes this raw MA
+// cross — with no trend/volume filter unlike Strategy 1/2 — doesn't survive). 4h is the only
+// timeframe where this indicator showed a robust edge, hence BTC/USDT 4h below.
 const STRATEGY4_PARAMS = {
-  maLen: 30, maMode: 'wma', atrPeriod: 14, atrMult: 2.0, rrRatio: 1.5
+  maLen: 80, maMode: 'wma', atrPeriod: 14, atrMult: 3.0, rrRatio: 1.5
 };
