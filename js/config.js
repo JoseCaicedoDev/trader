@@ -39,3 +39,11 @@ const FEE_PERCENT = 0.001; // 0.1% per side
 const STRATEGY3_PARAMS = {
   emaFast: 19, emaSlow: 45, vwapPeriod: 55, atrPeriod: 14, atrMult: 2.0, rrRatio: 1.0
 };
+
+// Strategy 4: "Oracle Move" — Hull-style double-MA (ma3/ma4 cross) ported from the "Oracle Move
+// [wm]" Pine Script indicator, applied to BTC/USDT 4h via Binance (same feed as Strategy 1/2).
+// maLen=30 and mode=wma match the indicator's own script defaults. NOT yet validated against real
+// data the way the other strategies' params are — a new addition, kept as-is until backtested.
+const STRATEGY4_PARAMS = {
+  maLen: 30, maMode: 'wma', atrPeriod: 14, atrMult: 2.0, rrRatio: 1.5
+};

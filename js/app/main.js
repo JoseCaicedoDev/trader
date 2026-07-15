@@ -51,6 +51,23 @@ const STRATEGIES_CONFIG = [
     showStochastic: false,
     emaFastLabel: STRATEGY3_PARAMS.emaFast,
     emaSlowLabel: STRATEGY3_PARAMS.emaSlow
+  },
+  {
+    key: 'oraclemove',
+    title: 'Oracle Move — BTC/USDT',
+    symbol: 'BTCUSDT',
+    timeframe: '4h',
+    accentColor: 'purple',
+    iconSvg: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    isEthTimeframe: false,
+    strategyType: 'oraclemove',
+    strategyParams: STRATEGY4_PARAMS,
+    runStrategy: runOracleMoveStrategy,
+    showStochastic: false,
+    showVwap: false,
+    maLabelPrefix: 'ma',
+    emaFastLabel: '4',
+    emaSlowLabel: '3'
   }
 ];
 
@@ -101,6 +118,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       root.querySelector('.chk-stoch-row').classList.remove('hidden');
       root.querySelector('.signal-event-badge').classList.remove('hidden');
     }
+    if (config.showVwap === false) {
+      root.querySelector('.chk-vwap-row').classList.add('hidden');
+    }
 
 
 
@@ -134,7 +154,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     const signalPanel = new SignalPanel(domRoot, {
       emaFastLabel: config.emaFastLabel,
       emaSlowLabel: config.emaSlowLabel,
-      priceDecimals: config.isEthTimeframe ? 2 : 0
+      priceDecimals: config.isEthTimeframe ? 2 : 0,
+      maLabelPrefix: config.maLabelPrefix || 'EMA'
     });
     const tradesTable = new TradesTable(domRoot);
 
@@ -169,11 +190,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   await Promise.all([
     runBacktestFlow('wyckoff'),
     runBacktestFlow('emacross'),
-    runBacktestFlow('eth')
+    runBacktestFlow('eth'),
+    runBacktestFlow('oraclemove')
   ]);
 
   // 5. Connect WebSocket Feeds (linked to one or more strategy views)
-  setupLiveFeed('BTCUSDT', ['wyckoff', 'emacross']);
+  setupLiveFeed('BTCUSDT', ['wyckoff', 'emacross', 'oraclemove']);
   setupLiveFeed('ETHUSDT', ['eth']);
 });
 
@@ -269,9 +291,14 @@ function setupLiveFeed(symbol, configKeys) {
         }
 
         if (res.currentState.signal) {
-          const eventType = view.config.strategyType === 'wyckoff'
-            ? res.currentState.lastEvent
-            : (res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
+          let eventType;
+          if (view.config.strategyType === 'wyckoff') {
+            eventType = res.currentState.lastEvent;
+          } else if (view.config.strategyType === 'oraclemove') {
+            eventType = res.currentState.signal === 'BUY' ? 'ORACLE_CROSS_UP' : 'ORACLE_CROSS_DOWN';
+          } else {
+            eventType = res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN';
+          }
           checkAndTriggerAlert(symbol, key, res.currentState.price, res.currentState.signal, kline.time, eventType);
         }
       }

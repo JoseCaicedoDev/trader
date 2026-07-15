@@ -104,7 +104,13 @@ function checkAndTriggerAlert(symbol, strategyName, price, signalType, timestamp
   lastAlertedKeys.add(key);
 
   const direction = signalType === 'BUY' ? 'LONG 🟢' : 'SHORT 🔴';
-  const strategyLabel = strategyName === 'wyckoff' ? 'Wyckoff Unificada' : 'VWAP + EMA Cross';
+  const strategyLabels = {
+    wyckoff: 'Wyckoff Unificada',
+    emacross: 'VWAP + EMA Cross',
+    eth: 'VWAP + EMA Cross',
+    oraclemove: 'Oracle Move'
+  };
+  const strategyLabel = strategyLabels[strategyName] || strategyName;
   const detail = eventLabel ? ` (${eventLabel})` : '';
 
   const title = `¡Señal ${direction} en ${symbol}!`;

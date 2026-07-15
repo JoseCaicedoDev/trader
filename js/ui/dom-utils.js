@@ -14,8 +14,10 @@ const EVENT_LABELS = Object.freeze({
   STOCH_EXIT: 'Cruce %K/%D', 
   STOP_LOSS: 'Stop Loss', 
   TAKE_PROFIT: 'Take Profit',
-  EMA_CROSS_UP: 'Cruce Alcista EMA', 
-  EMA_CROSS_DOWN: 'Cruce Bajista EMA'
+  EMA_CROSS_UP: 'Cruce Alcista EMA',
+  EMA_CROSS_DOWN: 'Cruce Bajista EMA',
+  ORACLE_CROSS_UP: 'Cruce Alcista Oracle Move',
+  ORACLE_CROSS_DOWN: 'Cruce Bajista Oracle Move'
 });
 
 const CSS_CLASSES = Object.freeze({
