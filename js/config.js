@@ -62,13 +62,24 @@ const STRATEGY3_PARAMS = {
 // re-swept the same 5 windows with vwapPeriod added to the grid (5520 combos) and 63 combos are now
 // positive on ALL 5 windows (vs. 0 without the filter). A finer follow-up sweep (maLen 50-100 step
 // 2 x atrMult 1.5-2.5 step 0.25 x rr 1.0-1.5 x vwapPeriod 70-140 step 10, 9360 combos; 90 of them
-// 5/5-positive) mapped the full plateau: alma / maLen 80-86 / atrMult=2.0 / rr=1 / vwapPeriod
-// 100-120, with atrMult 1.75 and 2.25 both dropping to 3-4/5 positive on its edges (so not a lucky
-// single point). len=80/vwap=120 is the best point in it — avg win rate 60.0% (worst window 55.0%),
-// avg drawdown 10.9% (worst window 14.3%), avg return +8.9%/window, and every one of the 5
-// non-overlapping windows individually profitable (worst window +1.3%). Chosen over the marginally
-// lower-avg-drawdown len=82/vwap=100 (10.4% but worst-window DD 15.5%, worst-window win rate 50.0%)
-// because it dominates on worst-case metrics, which is what robustness here is about.
+// 5/5-positive) mapped a plateau at alma / maLen 80-86 / atrMult=2.0 / rr=1 / vwapPeriod 100-120,
+// picking len=80/vwap=120: avg win rate 60.0%, avg drawdown 10.9%, avg return +8.9%/window, worst
+// window +1.3% (still >100 trades/config, so plenty of signal).
+//
+// User feedback: drawdown was still too high and there were "too many false signals" — wanted the
+// range widened further rather than fine-tuning the same neighborhood. A much wider sweep (maLen
+// 20-140 step 5 x atrMult 1.0-3.5 x rr 0.75-2.0 x vwapPeriod 30-200, 30375 combos, still all 3
+// modes) found the floor: true near-zero drawdown (4-6%) only exists for configs that are barely
+// profitable or fail in 2-3 of 5 windows — pushing drawdown to ~0 makes the strategy stop making
+// real money, it doesn't come for free. But it also surfaced a materially better point than the
+// previous plateau: ema / maLen=135 / atrMult=3.0 / rr=1.25 / vwapPeriod=180 — avg win rate 64.2%,
+// avg drawdown 10.2%, avg return +17.4%/window, worst window individually +4.3% (vs +1.3% before).
+// The much longer maLen (135 candles = ~22.5 days) means far fewer trades (42-47 total across the 5
+// windows vs 107-116 before, ~1 every 2-3 weeks) — i.e. it files far fewer, higher-conviction
+// signals, directly addressing the "too many false signals" complaint, not just papering over it.
+// Confirmed not a lucky point: maLen 125-145 all stay 4-5/5 positive with avgWin 58-65%; atrMult is
+// a real (not flat) peak at 3.0 — 2.5 and 3.5 on either side both degrade to 4/5 positive with worse
+// drawdown (11% and 16.3-16.6% respectively).
 const STRATEGY4_PARAMS = {
-  maLen: 80, maMode: 'alma', atrPeriod: 14, atrMult: 2.0, rrRatio: 1.0, vwapPeriod: 120
+  maLen: 135, maMode: 'ema', atrPeriod: 14, atrMult: 3.0, rrRatio: 1.25, vwapPeriod: 180
 };
