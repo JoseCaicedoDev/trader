@@ -46,9 +46,9 @@ const CSS_CLASSES = Object.freeze({
   METRIC_UP: 'text-2xl font-bold tracking-tight tabular-nums text-neon-emerald drop-shadow-[0_0_8px_rgba(0,230,118,0.3)]',
   METRIC_DOWN: 'text-2xl font-bold tracking-tight tabular-nums text-neon-rose drop-shadow-[0_0_8px_rgba(255,23,68,0.3)]',
   
-  STRATEGY_TAB_ACTIVE_WYCKOFF: 'strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 active-strategy-tab',
-  STRATEGY_TAB_ACTIVE_CROSS: 'strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-purple/15 text-neon-purple border border-neon-purple/25 active-strategy-tab',
-  STRATEGY_TAB_INACTIVE: 'strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200'
+  STRATEGY_TAB_ACTIVE_WYCKOFF: 'strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 active-strategy-tab shrink-0 whitespace-nowrap snap-start',
+  STRATEGY_TAB_ACTIVE_CROSS: 'strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-purple/15 text-neon-purple border border-neon-purple/25 active-strategy-tab shrink-0 whitespace-nowrap snap-start',
+  STRATEGY_TAB_INACTIVE: 'strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 shrink-0 whitespace-nowrap snap-start'
 });
 
 function formatDate(time) {

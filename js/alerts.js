@@ -75,7 +75,7 @@ function showVisualToast(title, body) {
 
   const toast = document.createElement('div');
   // Styling with Tailwinds glass-card structure
-  toast.className = 'glass-card rounded-xl p-4 border border-neon-cyan/20 flex flex-col gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-slide-in pointer-events-auto bg-dark-sidebar/95 backdrop-blur-md w-72 select-none';
+  toast.className = 'glass-card rounded-xl p-4 border border-neon-cyan/20 flex flex-col gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] animate-slide-in pointer-events-auto bg-dark-sidebar/95 backdrop-blur-md w-full sm:w-72 select-none';
   toast.innerHTML = `
     <div class="flex items-center justify-between">
       <span class="font-bold text-xs text-white tracking-wide uppercase">${title}</span>

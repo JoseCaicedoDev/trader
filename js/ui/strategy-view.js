@@ -43,7 +43,7 @@ class StrategyView {
         this.panels.forEach(panel => {
           const isTarget = panel.dataset.tabPanel === target;
           panel.classList.toggle('hidden', !isTarget);
-          panel.classList.toggle('flex', isTarget);
+          panel.classList.toggle('grid', isTarget);
         });
 
         // Crucial: Trigger chart redraw when hidden container is shown
@@ -79,7 +79,7 @@ class StrategyView {
           if (viewInstance && viewInstance.root) {
             const el = viewInstance.root;
             el.classList.toggle('hidden', key !== target);
-            el.classList.toggle('flex', key === target);
+            el.classList.toggle('grid', key === target);
           }
         });
 

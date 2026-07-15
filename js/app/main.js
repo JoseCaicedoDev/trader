@@ -74,7 +74,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     root.id = `strategy-view-${config.key}`;
     if (config.key === 'wyckoff') {
       root.classList.remove('hidden');
-      root.classList.add('flex');
+      root.classList.add('grid');
     }
 
     // Set title and colors
