@@ -81,7 +81,7 @@ Periodically (or when requested), perform a health check on the wiki:
 
 ---
 
-## Project State — What Has Been Built (as of 2026-07-13)
+## Project State — What Has Been Built (as of 2026-07-15)
 
 This section is the **system memory**. Update it every time a major change is made to the app or wiki.
 
@@ -129,40 +129,39 @@ A fully functional single-page backtesting application running in the browser, d
 
 ---
 
-### 📈 Strategy 2: VWAP + EMA Triple Cross (BTC/USDT) — Reference, roadmap CLOSED
+### 📈 Strategy 2: VWAP + EMA Triple Cross (BTC/USDT) — RE-TUNED (2026-07-15), see correction below
 
 **File**: `js/strategy-emacross.js` (function `runEmaCrossStrategy`, shared with Strategy 3)
 **Parameters**: `js/config.js` → `STRATEGY2_PARAMS`
+**Tab title**: "VWAP + Cruce EMA 24/30" (`index.html` nav button + `STRATEGIES_CONFIG` in `js/app/main.js`) — update this string again if `emaFast`/`emaSlow` change.
 
-**Logic overview**:
-- Entry fires when EMA21, EMA30, and VWAP (80) achieve **full alignment** simultaneously (all three above/below each other in the same direction). The triggering cross is whichever of the three pairwise combinations completes the alignment last.
-- Exit: SL/TP fires, or the **full opposite** alignment forms (no partial breakdown exit — validated to raise combined return 23.8% → 42.7% while lowering drawdown 17.2% → 9.2%).
-- Stop: `ATR × 2.0` from entry close.
-- Target: `stopDist × rrRatio (1.0)` — 1:1 risk:reward fixed.
+> ⚠️ **CORRECTION (2026-07-15) — the 2026-07-13 "roadmap CLOSED" conclusion below was based on an insufficient validation methodology and is superseded.** That work validated only against the live ~1000-candle window plus ONE historical out-of-sample window. When re-tested this session against **five non-overlapping 1000-candle windows** (~2.3 years, 2024-04 → 2026-07 — see [[project_backtesting_methodology]]-style validation, established this session), the old 21/30/vwap80/atr2.0/rr1.0 config actually **loses in 2 of the 5 windows** (−3.4% and −13.9% with 26.1% drawdown) — a real weakness that a single extra historical window didn't surface. Treat the "EMA period sweep", "VWAP period sweep", "stop/target grid" and other conclusions in the roadmap table further below as **stale** — they were the right rigor for the tools available at the time, but the 5-window methodology is now the bar for this strategy. The wiki pages `ema_periodos_cortos_vs_2130.md`, `analisis_profundo_mejoras_ema.md`, `analisis_temporalidades_1h_1d_ema.md` and `confirmacion_mtf_diaria_ema.md` were written under the old methodology and have not been re-validated against 5 windows — re-check before trusting their specific numbers.
 
-**Validated backtesting results** (~1000 velas 4h BTC/USDT, app's live window):
-- Win Rate: 76.5%
-- Return: +31.4%
-- Max Drawdown: −4.37%
-- Trades: 17 completed
-- Profit Factor: 3.49
+**Current parameters** (`STRATEGY2_PARAMS`): `emaFast=24, emaSlow=30, vwapPeriod=105, atrPeriod=14, atrMult=3.75, rrRatio=0.5`.
 
-> ⚠️ **Regime dependency — read before trusting these numbers going forward**: the same 21/30/vwap80 config, backtested on the ~1800 candles *preceding* the current live window (roughly Mar 2025 → Jan 2026), returns only **+8.47%, 61.3% win rate, PF 1.27**. The headline numbers above are real but reflect a favorable recent regime, not a timeless constant. Expect true forward performance to sit somewhere between +8% and +31% depending on market conditions, not pinned to the higher number.
+**Logic overview** (unchanged): Entry fires when EMA-fast, EMA-slow, and VWAP achieve **full alignment** simultaneously (all three above/below each other in the same direction). Exit: SL/TP fires, or the **full opposite** alignment forms (no partial breakdown exit). Stop: `ATR × atrMult`. Target: `stopDist × rrRatio`.
 
-**Parameter stability**: Confirmed stable across EMA periods 18–24 / 25–35 / VWAP 65–95. A fast=7/slow=15/vwap=20 candidate was **rejected** as overfitted (collapsed −34% on a 10-period VWAP shift). Parameters moved from 25/50 to 21/30 raised win rate 69.2% → 76.5% and return 13.55% → 31.4%.
+**How the new params were found**: a 3-stage grid sweep (~639k parameter combinations total — wide pass across `emaFast` 3-60 / `emaSlow` 10-250 / `vwapPeriod` 10-400 / `atrMult` 1.0-4.0 / `rrRatio` 0.75-3.0, then two finer passes on the promising regions), each combination evaluated on the same 5 non-overlapping windows, requiring ≥12 closed trades/window to preserve the app's live trade frequency. Winner confirmed by neighborhood validation (varied each parameter independently): `emaFast` (20-28), `emaSlow` (26-34), `atrMult` (3.25-4.25) and `rrRatio` (0.25-1.0) are all genuine local peaks with graceful degradation on both sides — **not** overfit spikes. `vwapPeriod` is the one sensitive dimension: below 100 the config drops to only 3-4/5 profitable windows; the safe range is 105-120.
 
-**Improvement roadmap: exhaustively tested and CLOSED (2026-07-13)** — every applicable vector from [mejoras_acierto_retorno.md](file:///c:/Users/gira/Desktop/backtesting/wiki/mejoras_acierto_retorno.md) was validated against real data (LIVE window + a true historical out-of-sample window ~1800-2000 candles before it) and **none beat the current config**. Full detail across 7 wiki pages (see table below); summary:
-- **EMA fast/slow periods**: every pair in {7,14,21,30} tested — 21/30 wins on every metric; shorter pairs collapse (7/14: +0.55% return, PF 1.05).
-- **VWAP period**: full sweep 20→150 in steps of 5-10 — 80 is the robust optimum; <50 is destructive (−30% return); secondary peaks at 55/65 are fragile single points, not real improvements.
-- **Stop/target geometry**: full `atrMult × rrRatio` grid (12 cells) — 2.0/1.0 (current) is the optimum, no cell dominates it.
-- **Candle-body confirmation filter** (reject wick/doji trigger candles): helps the *rejected* shorter EMA pairs catch up partially, but reduces return when applied to 21/30 (filters out winning trades too).
-- **Support/Resistance as Take-Profit** (same technique as Strategy 1): raises win rate to 82.4% but cuts return to +14.00% (less than half) — a risk-profile trade-off, not a net improvement.
-- **Exit management** (breakeven-after-1R, ATR trailing stop): zero effect — with `rrRatio=1.0`, price reaches the fixed target before trailing logic can activate.
-- **Volume filter & Bollinger Bandwidth squeeze filter**: both looked like clear wins on the LIVE window (PF 3.9-6.8) but **collapsed to PF 0.3-1.0 on the historical window** — textbook regime mirages, rejected.
-- **ATR-percentile volatility regime filter**: the one candidate that improves *robustness* (historical-window PF 1.27→1.68, drawdown 9.87%→6.61%) at the cost of live-window return (+25%→+16%) — a legitimate risk-profile choice, not adopted by default.
-- **Timeframe**: tested on 1h (6000 candles) and 1d (3000 candles, back to 2018) — **both rejected**. 1h is break-even structurally (noise + fee drag eat the edge); 1d has drawdowns of 24-52% even in its best configs, and the 4h-tuned params lose −27% on 1d. **4h is intrinsic to the edge, not an arbitrary choice.**
-- **Multi-timeframe daily EMA gate** (roadmap item "MTF confirmation"): tested EMA{20,50,100,200} daily as a hard/soft entry gate with a proper no-lookahead daily-candle mapping — the proposed EMA50 variant cuts live return in half and turns the historical window negative; EMA20 is another regime mirage. Rejected.
-- **Bottom line**: `js/strategy-emacross.js` + `STRATEGY2_PARAMS` (21/30/vwap80/atr2.0/rr1.0) is a genuine, thoroughly-searched local optimum for this signal family in 4h. No further tuning of these levers is expected to help — the only unexplored path with real economic logic left is item #9 below (sizing by conviction), which is a different lever (position sizing, not entry/exit logic).
+**Validated results** (avg / worst-window across the 5 non-overlapping windows):
+- Win Rate: 81.6% avg (worst window 73.3%)
+- Return: +20.4%/window avg (worst window +11.5% — every one of the 5 windows was individually profitable)
+- Max Drawdown: 7.3% avg (worst window 11.3%)
+- Trades: ~14/window (vs. ~18.6/window for the old config — similar activity level, by design)
+- Profit Factor: 3.5 avg across windows
+
+**Older, now-superseded content kept for historical record** — every applicable vector from [mejoras_acierto_retorno.md](file:///c:/Users/gira/Desktop/backtesting/wiki/mejoras_acierto_retorno.md) was validated on 2026-07-13 against the live window + ONE historical out-of-sample window (not the 5-window methodology above):
+- **EMA fast/slow periods**: every pair in {7,14,21,30} tested — 21/30 won on every metric under that methodology; shorter pairs collapsed (7/14: +0.55% return, PF 1.05).
+- **VWAP period**: full sweep 20→150 in steps of 5-10 — 80 was the apparent optimum under that methodology (superseded: 105-120 is the robust range under 5-window validation).
+- **Stop/target geometry**: full `atrMult × rrRatio` grid (12 cells) — 2.0/1.0 was the apparent optimum under that methodology (superseded: 3.75/0.5 wins under 5-window validation).
+- **Candle-body confirmation filter** (reject wick/doji trigger candles): helps the *rejected* shorter EMA pairs catch up partially, but reduced return when applied to 21/30.
+- **Support/Resistance as Take-Profit** (same technique as Strategy 1): raised win rate to 82.4% but cut return to +14.00% (less than half) — a risk-profile trade-off, not re-tested against the new params.
+- **Exit management** (breakeven-after-1R, ATR trailing stop): zero effect at `rrRatio=1.0` (not re-tested at the new `rrRatio=0.5`).
+- **Volume filter & Bollinger Bandwidth squeeze filter**: both looked like clear wins on the LIVE window (PF 3.9-6.8) but **collapsed to PF 0.3-1.0 on the historical window** — textbook regime mirages, rejected under either methodology.
+- **ATR-percentile volatility regime filter**: improved robustness under the old methodology at the cost of live-window return — not re-tested against the new params.
+- **Timeframe**: tested on 1h (6000 candles) and 1d (3000 candles, back to 2018) — **both rejected**; 1h is structurally break-even (noise + fee drag), 1d has 24-52% drawdowns. **4h remains intrinsic to the edge** (this conclusion is independent of the specific EMA/VWAP params and still holds).
+- **Multi-timeframe daily EMA gate**: tested EMA{20,50,100,200} daily as a hard/soft entry gate — rejected under the old methodology, not re-tested against the new params.
+- Item #9 (position sizing by conviction) remains untested for this strategy — a different lever (sizing, not entry/exit logic) than anything above.
 
 ---
 
@@ -205,7 +204,7 @@ A fully functional single-page backtesting application running in the browser, d
 
 Documented in [mejoras_acierto_retorno.md](file:///c:/Users/gira/Desktop/backtesting/wiki/mejoras_acierto_retorno.md). Each item must be validated in-sample first, then out-of-sample, **one at a time**, before touching production code.
 
-**Strategy 2 (VWAP+EMA Cross, BTC) — ROADMAP CLOSED.** Every applicable item below was tested exhaustively on 2026-07-13 (see the 5 analysis pages above) and none improved on the current config. Kept here only for the historical record — do not re-attempt without new data or a genuinely new idea:
+**Strategy 2 (VWAP+EMA Cross, BTC) — table below is STALE (superseded 2026-07-15).** Every item was tested exhaustively on 2026-07-13 against the live window + one historical window (see the 5 analysis pages above), but that methodology missed a real weakness (see the correction under Strategy 2's own section above) and current `STRATEGY2_PARAMS` are no longer 21/30/vwap80/atr2.0/rr1.0. Kept for historical record only — if revisiting any of these levers, re-validate against the 5-non-overlapping-window methodology from scratch, don't assume these conclusions still hold:
 
 | # | Improvement | Result |
 |---|---|---|
@@ -248,10 +247,20 @@ When resumed, revisit this section and the `js/alerts.js` file (already has the 
 
 ---
 
+### 🎵 Strategy 4 Attempt: "Oracle Move" — IMPLEMENTED, THEN REVERTED (2026-07-15)
+
+A 4th BTC/USDT tab was added implementing a Hull-MA-style double moving average crossover (`ma3 = 2×MA(n/2) − MA(n)`, `ma4 = MA(ma3, √n)`, cross between the two as the signal), ported from a Pine Script indicator the user provided ("Oracle Move [wm]"). Full history for context, in case anything similar is requested again:
+- **Direction bug caught by the user from a chart screenshot**: the first implementation had the cross direction inverted (fired LONG on the bearish cross). This is what motivated moving to the 5-non-overlapping-window + neighborhood-stability validation methodology described in "Critical Technical Constraints" above — the buggy version's "validated" params had looked robust under a weaker 3-window check.
+- Post-fix, a raw ma3/ma4 cross topped out at ~40-41% win rate (no confluence filter). Adding a rolling-VWAP trend gate (same technique as Strategy 2 — only take the cross if price agrees with VWAP) raised it to ~58-64% win rate with much better drawdown, confirmed via the same multi-window + neighborhood methodology.
+- **Reverted at user's request** ("no me aporta nada," 2026-07-15) once Strategy 2 was re-tuned to a stronger result using the same methodology — not because the approach was flawed, but because it stopped being a distinct enough addition once Strategy 2 improved. Fully removed: `js/strategy-oraclemove.js` deleted, and every touchpoint reverted (tab button + script tag in `index.html`, `STRATEGIES_CONFIG` entry / `Promise.all` / `setupLiveFeed` / alert event-type branching in `js/app/main.js`, `STRATEGY4_PARAMS` in `js/config.js`, strategy label in `js/alerts.js`, `ORACLE_CROSS_UP/DOWN` in `js/ui/dom-utils.js`, the generic `showVwap`/`maLabelPrefix` plumbing added to `js/ui/signal-panel.js` and `js/app/main.js` for it, and the now-unused `wmaSeries`/`emaSeries`/`almaSeries`/`calculateWMA`/`calculateALMA` helpers in `js/indicators.js`).
+- **Don't re-propose a 4th indicator-based strategy tab unless explicitly asked.** The stable set is the 3 tabs described above (Wyckoff, VWAP+EMA BTC, VWAP+EMA ETH). If a similar Pine Script/indicator port is requested again, the validation methodology above (5 windows + neighborhood check, VWAP trend gate as a first-line quality lever) is the proven starting point — no need to rediscover it.
+
+---
+
 ### ⚙️ Critical Technical Constraints
 
 1. **No lookahead bias**: All indicator and event data used at candle `i` must be computed only from candles `0..i-1`. The codebase enforces this via two-pointer pivot scanning and the `confirmedAt = p + bars` logic in `detectSwingLevels`.
-2. **Parameter changes require re-validation**: Any change to `STRATEGY_PARAMS` or `STRATEGY2_PARAMS` must be backtested on the full live data window AND compared against a separate out-of-sample window before being kept.
+2. **Parameter changes require re-validation**: Any change to `STRATEGY_PARAMS`, `STRATEGY2_PARAMS`, or `STRATEGY3_PARAMS` must be backtested against **at least 3-5 non-overlapping historical windows** (not just the live window + one extra window — that weaker check missed a real failure mode in Strategy 2, see the correction under Strategy 2 above) and confirmed stable across a **parameter neighborhood** (vary each param ±1-2 steps; a real optimum degrades gracefully on both sides, an overfit spike collapses sharply) before being kept.
 3. **Binance CORS**: The app calls `api.binance.com` directly. No proxy is used. Yahoo Finance / yfinance was attempted for a third strategy (equities) but all free CORS proxies were blocked — Strategy 3 was switched to ETH/USDT on Binance instead.
 4. **Strategy 3 (ETH/USDT)**: Uses the same `runEmaCrossStrategy` engine with `STRATEGY3_PARAMS` (EMA19/45, VWAP55). Results: 23 trades, 69.6% win rate, 30.51% return, 8.30% drawdown, PF 1.93. Confirmed stable across the neighborhood of nearby periods.
 5. **Simulation model**: 1x cash-settled futures (no real leverage). Fee = 0.1% per side. Initial capital = $100 (for % return calculation).
@@ -380,6 +389,18 @@ All structural HTML must use semantic elements:
 - Icon-only buttons: `aria-label="descriptive name"`.
 - Live signal panel (updates every 1.5s): `aria-live="polite"`.
 - Status dots (API active/error): `aria-label="Estado API: activa"` or `"error"`.
+
+---
+
+### 📱 Responsive Layout Standards — Mobile-First with CSS Grid (2026-07-15)
+
+The app was converted to a **mobile-first** layout using **Tailwind's CSS Grid utilities** for every structural section (the pre-existing flex-based layout was replaced). All new layout work must follow this pattern:
+
+- **Structural sections use `grid`, not `flex`.** Flex is reserved for simple inline alignment (an icon next to a label, a row of badges) — anything that divides the page into named regions (nav, sidebar + dashboard split, dashboard's tab-bar + content rows, tab panels' header + chart rows) uses `grid grid-cols-[...]` / `grid-rows-[...]`. Reference implementation: `index.html` — `body` (`grid grid-rows-[auto_1fr]`), `nav` (`grid grid-cols-1 md:grid-cols-[1fr_auto]`), `.strategy-view` (`grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]`), the dashboard column (`grid grid-rows-[auto_1fr]`), and each tab panel section (`grid grid-rows-[auto_1fr]`).
+- **Mobile-first breakpoints, `lg:` gates desktop-only behavior.** Base (unprefixed) classes target mobile: natural document scroll (`min-h-screen`, no `overflow-hidden`), single-column grids, content-driven heights. `lg:` prefixed classes restore the desktop-locked-viewport behavior (`lg:h-screen lg:overflow-hidden`, multi-column grid-template, `lg:h-full` on charts) established by an earlier design decision (commit `98394cf`) to eliminate outer scrollbars on desktop. Do not remove the desktop lock — only mobile gained scroll.
+- **Chart containers use `dvh` + `min-h`, not fixed pixel heights.** `h-[680px]` / `h-[600px]` were replaced with `h-[55dvh] min-h-[320px] lg:h-full` (main chart) and `h-[50dvh] min-h-[280px] lg:h-full` (equity chart) — `dvh` avoids the mobile browser chrome resize bug that `vh` has, and `lg:h-full` derives desktop height from the parent grid row instead of a magic-number pixel value. `ChartManager` ([js/chart/chart-manager.js](c:\Users\gira\Desktop\backtesting\js\chart\chart-manager.js)) needs no changes for this — it already sizes off `clientHeight` via `ResizeObserver`.
+- **Horizontal scroll containers for anything that can't reflow on narrow screens**: the strategy-switcher nav and the dashboard tab bar use `overflow-x-auto snap-x` with `shrink-0 whitespace-nowrap snap-start` buttons (a carousel, not a wrap) since 3 tabs don't fit a 360px-wide screen; the trade-history table wraps in `overflow-auto` with `min-w-[720px]` on the `<table>` itself so 9 columns scroll horizontally instead of compressing illegibly.
+- **Gotcha — `className` full-replacement wipes structural classes.** `StrategyView.initStrategySwitcher()` ([js/ui/strategy-view.js](c:\Users\gira\Desktop\backtesting\js\ui\strategy-view.js)) sets `btn.className = CSS_CLASSES.STRATEGY_TAB_ACTIVE_WYCKOFF / _CROSS / _INACTIVE` on every click — this **replaces the entire class list**, not just the active/inactive styling. Any layout utility class added to those buttons in `index.html` (e.g. `shrink-0 whitespace-nowrap snap-start` for the mobile carousel) must **also** be baked into those three `CSS_CLASSES` constants in `js/ui/dom-utils.js`, or it silently disappears the first time the user clicks a tab. Same root-container gotcha for the `.strategy-view` grid: `classList.toggle('flex'/'grid', ...)` in `js/ui/strategy-view.js` (both `setupTabs`'s panel toggle and `initStrategySwitcher`'s root toggle) and the initial `classList.add(...)` for the default-visible Wyckoff tab in `js/app/main.js` must match whatever display value (`grid`, not `flex`) the corresponding container actually uses — these three JS toggle points are easy to miss when changing a container's display type in the HTML.
 
 ---
 
