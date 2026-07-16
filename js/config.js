@@ -15,24 +15,22 @@ const STRATEGY_PARAMS = {
 // completes it), and a position is held until either SL/TP fires or the full opposite alignment
 // forms (no early exit on a partial breakdown). Simpler and more classic than the Wyckoff system.
 //
-// RE-TUNED (2026-07-15) against a 5-YEAR span (11 non-overlapping 1000-candle windows, 2021-07 to
-// 2026-07, covering the 2021 bull, the 2022 bear -75%, the 2023 recovery and the 2024-2026 cycle).
-// The old 24/30/105/3.75/0.5 params only ever validated against 2.3 years turned out to lose badly
-// in 2 of the 11 windows (-27.1%/30.4%DD during a 2023-2024 whipsaw, -36.1%/44.2%DD during the
-// Nov-2021-ATH crash). An exhaustive EMA(10-100) x VWAP(10-100) grid (step 1, ~769,860 structure x
-// risk combos) found the single fully-robust point at emaFast=39/slow=41/vwap=34, but that traded
-// off win rate hard (48% avg vs the old params' 70.6%) for the extra robustness. Re-examining the
-// same tier-12 sweep results for combos that beat the old params on BOTH win rate AND trade count
-// (not just robustness) surfaced emaFast=42/emaSlow=48/vwapPeriod=42 at the SAME risk geometry
-// (atrMult=3.75/rrRatio=0.5) as the old params: 9/11 positive windows (vs 8/11), avg win rate 72.4%
-// (vs 70.6%), ~16.6 trades/window (vs 14.3, +16%), avg drawdown 11.4% (vs 15.6%), and critically a
-// worst window of only -5.9% (vs -36.1%) — nearly eliminates the old params' tail risk while
-// improving every metric the user cared about (acierto, frequency) instead of trading them away.
-// Neighborhood mostly degrades gracefully (7-9/11 across +-1/+-2 steps in emaFast/emaSlow/atrMult);
-// vwapPeriod is the sensitive dimension here too (drops to 5/11 at vwapPeriod-2), so don't retune
-// vwapPeriod alone without re-checking robustness.
+// The previous 21/30/80/2.0/1.0 params were validated only against the live app window (~1000
+// candles). Re-validating on FIVE non-overlapping 1000-candle windows (~2.3 years, 2024-04 to
+// 2026-07) exposed that they actually lose in 2 of the 5 (-3.4%, -13.9% with 26.1% drawdown) —
+// never caught because that methodology didn't exist yet when they were picked.
+//
+// Grid sweep across the same 5 windows (~639k combos total across a wide pass + two finer passes
+// on the promising regions, requiring >=12 closed trades/window to keep the current trade
+// frequency) found emaFast=24/emaSlow=30/vwapPeriod=105/atrMult=3.75/rrRatio=0.5: positive on ALL 5
+// windows (avg return +20.4%/window, avg win rate 81.6%, avg drawdown 7.3%, worst window still
+// +11.5% return / 73.3% win rate), a large improvement on every axis over the old params (+2.6%
+// avg return, 56.1% avg win rate, 12.5% avg drawdown) at a similar trade frequency (14/window vs
+// 18.6/window). Confirmed not a lucky point: stable across neighbors in emaFast (20-28), emaSlow
+// (26-34), atrMult (3.25-4.25) and rrRatio (0.25-1.0) — the one sensitive dimension is vwapPeriod,
+// which drops to only 3-4/5 profitable windows below 100 (105-120 is the safe range).
 const STRATEGY2_PARAMS = {
-  emaFast: 42, emaSlow: 48, vwapPeriod: 42, atrPeriod: 14, atrMult: 3.75, rrRatio: 0.5
+  emaFast: 24, emaSlow: 30, vwapPeriod: 105, atrPeriod: 14, atrMult: 3.75, rrRatio: 0.5
 };
 
 const INITIAL_CAPITAL = 100;
