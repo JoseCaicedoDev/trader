@@ -29,8 +29,26 @@ const STRATEGY_PARAMS = {
 // 18.6/window). Confirmed not a lucky point: stable across neighbors in emaFast (20-28), emaSlow
 // (26-34), atrMult (3.25-4.25) and rrRatio (0.25-1.0) — the one sensitive dimension is vwapPeriod,
 // which drops to only 3-4/5 profitable windows below 100 (105-120 is the safe range).
+//
+// Later refinement (same 5 windows, wider grid incl. atrMult up to 6.0 and rrRatio down to 0.25):
+// atrMult 3.75 -> 4.5 and rrRatio 0.5 -> 0.4. A wider ATR stop with a nearer target survives more
+// noise shakeouts and banks the move earlier, which trades a sliver of average return for a
+// materially calmer equity curve: avg win rate 82.7% -> 84.3%, avg drawdown 7.30% -> 6.61%, and
+// most importantly WORST-window drawdown 11.26% -> 7.65%, at identical trade frequency (14.0/window,
+// 75 trades over the combined 2024-04..2026-07 span) and effectively identical combined return
+// (+184.4% -> +185.1%, PF 3.09 -> 3.14). Still 5/5 windows positive, and still not a lucky point:
+// stable across emaFast (20-28), emaSlow (26-34), atrMult (3.75-5.0) and rrRatio (0.25-0.6), with
+// vwapPeriod=105 remaining the one sensitive dimension as before.
+//
+// This timeframe was also re-examined directly: dropping the strategy to 2h was swept from scratch
+// (~45.6k combos over the same 5 windows) and is worse on every axis the 4h version is judged on —
+// the 2h optima merely converge back to doubled periods (EMA ~48-52/60, VWAP 210) while running at
+// the SAME ~14 trades/window, with a lower win-rate ceiling and roughly double the drawdown. Higher
+// trade frequency is not reachable profitably at 2h: requiring >=25 trades/window left only 1 of
+// 27.5k combos positive on all 5 windows (+6.8% avg, 47.5% win rate, 18.5% drawdown). Do not port
+// this strategy to 2h.
 const STRATEGY2_PARAMS = {
-  emaFast: 24, emaSlow: 30, vwapPeriod: 105, atrPeriod: 14, atrMult: 3.75, rrRatio: 0.5
+  emaFast: 24, emaSlow: 30, vwapPeriod: 105, atrPeriod: 14, atrMult: 4.5, rrRatio: 0.4
 };
 
 const INITIAL_CAPITAL = 100;
