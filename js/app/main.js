@@ -38,11 +38,11 @@ const STRATEGIES_CONFIG = [
     emaSlowLabel: STRATEGY2_PARAMS.emaSlow
   },
   {
-    // Same engine and same EMA pair as 'emacross', on the 2h timeframe with its own calibration and
-    // re-entry enabled — a separate view whose purpose is trade frequency, not better risk. See the
-    // STRATEGY4_PARAMS comment in config.js before reading anything into its metrics.
+    // Same engine as 'emacross' on the 2h timeframe, but with its own EMA pair (12/60, not 24/30),
+    // its own calibration and re-entry enabled — a separate view whose purpose is trade frequency,
+    // not better risk. See the STRATEGY4_PARAMS comment in config.js before reading into its metrics.
     key: 'emacross2h',
-    title: 'VWAP + Cruce EMA 24/30 — 2h',
+    title: 'VWAP + Cruce EMA 12/60 — 2h',
     symbol: 'BTCUSDT',
     timeframe: '2h',
     accentColor: 'purple',
