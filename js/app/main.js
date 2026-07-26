@@ -52,6 +52,10 @@ const STRATEGIES_CONFIG = [
     strategyParams: STRATEGY4_PARAMS,
     runStrategy: runEmaCrossStrategy,
     showStochastic: false,
+    // Roughly 3,000 2h candles from 1 January instead of Binance's default 1,000.
+    // This applies only to the 12/60 view, so the other panels retain their
+    // deliberately calibrated 1,000-candle windows.
+    historyStart: Date.UTC(new Date().getUTCFullYear(), 0, 1),
     emaFastLabel: STRATEGY4_PARAMS.emaFast,
     emaSlowLabel: STRATEGY4_PARAMS.emaSlow
   },
@@ -202,7 +206,9 @@ async function runBacktestFlow(key) {
   try {
     view.metricsPanel.setLoading(true, 'Conectando con Binance API...');
 
-    const rawData = await fetchBinanceKlines(view.config.symbol, view.config.timeframe, 1000);
+    const rawData = view.config.historyStart
+      ? await fetchBinanceKlinesSince(view.config.symbol, view.config.timeframe, view.config.historyStart)
+      : await fetchBinanceKlines(view.config.symbol, view.config.timeframe, 1000);
     if (!rawData || rawData.length === 0) {
       throw new Error('No se recibieron datos de la API de Binance.');
     }
