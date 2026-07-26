@@ -185,5 +185,9 @@ const STRATEGY4_PARAMS = {
   emaFast: 12, emaSlow: 60, vwapPeriod: 220, atrPeriod: 14, atrMult: 5.0, rrRatio: 0.495,
   reentryCooldown: 4, maxReentries: 2,
   trendFilterPeriod: 50, trendFilterLookback: 5, trendFilterSide: 'short',
-  counterOnTP: true
+  // The counter book keeps its 5 ATR stop but targets 0.60R. Tested on BTC 2h
+  // from January onward and five additional historical windows: it preserves
+  // trade frequency while improving return and drawdown versus the inherited
+  // 0.495R target used by the main strategy.
+  counterOnTP: true, counterRrRatio: 0.60
 };
