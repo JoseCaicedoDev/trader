@@ -73,24 +73,6 @@ const STRATEGIES_CONFIG = [
     showStochastic: false,
     emaFastLabel: STRATEGY3_PARAMS.emaFast,
     emaSlowLabel: STRATEGY3_PARAMS.emaSlow
-  },
-  {
-    // Direct ETH/USDT comparison for the BTC 12/60 2h system. Parameters are
-    // deliberately identical: this tab measures transferability, not an ETH tune.
-    key: 'emacross2hEth',
-    title: 'VWAP + Cruce EMA 12/60 — ETH/USDT · 2h',
-    symbol: 'ETHUSDT',
-    timeframe: '2h',
-    accentColor: 'purple',
-    iconSvg: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    isEthTimeframe: true,
-    strategyType: 'emacross',
-    strategyParams: STRATEGY4_PARAMS,
-    runStrategy: runEmaCrossStrategy,
-    showStochastic: false,
-    historyStart: Date.UTC(new Date().getUTCFullYear(), 0, 1),
-    emaFastLabel: STRATEGY4_PARAMS.emaFast,
-    emaSlowLabel: STRATEGY4_PARAMS.emaSlow
   }
 ];
 
@@ -213,7 +195,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupLiveFeed('BTCUSDT', '4h', ['wyckoff', 'emacross']);
   setupLiveFeed('BTCUSDT', '2h', ['emacross2h']);
   setupLiveFeed('ETHUSDT', '4h', ['eth']);
-  setupLiveFeed('ETHUSDT', '2h', ['emacross2hEth']);
 });
 
 // Generic Backtest Flow Runner
