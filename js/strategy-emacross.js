@@ -18,15 +18,40 @@
 // `maxReentries` times per episode. Used only by Strategy 4 (BTC 2h); Strategies 2 and 3 omit both
 // params and are therefore byte-identical to the pre-re-entry behavior.
 //
+// Optional background-trend filter (params.trendFilterPeriod / trendFilterLookback /
+// trendFilterSide, filter off when the period is absent or 0): gates which SIDE may open a
+// position, based on the slope of a longer EMA — bullish when EMA(period) sits above where it was
+// `lookback` candles ago. `trendFilterSide` is 'long', 'short' or 'both' and names the side being
+// gated: 'short' blocks new shorts while that longer EMA is still rising, which is the only
+// configuration currently in use (Strategy 4). Candles where the filter cannot be evaluated yet
+// count as blocking — a filter you cannot read is not a filter you may ignore.
+//
 // Depends on: indicators.js (calculateEMA, calculateRollingVWAP, calculateATR) and simulator.js
 // (runSimulator). Must load after both.
 function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
   const { emaFast, emaSlow, vwapPeriod, atrPeriod, atrMult, rrRatio,
-          reentryCooldown = 0, maxReentries = 0 } = params;
+          reentryCooldown = 0, maxReentries = 0,
+          trendFilterPeriod = 0, trendFilterLookback = 0, trendFilterSide = null } = params;
   const emaF = calculateEMA(data, emaFast);
   const emaS = calculateEMA(data, emaSlow);
   const vwap = calculateRollingVWAP(data, vwapPeriod);
   const atr = calculateATR(data, atrPeriod);
+
+  const filterActive = trendFilterPeriod > 0 && trendFilterLookback > 0 && trendFilterSide !== null;
+  const trendEma = filterActive ? calculateEMA(data, trendFilterPeriod) : null;
+  // +1 rising, -1 falling, 0 not yet computable (treated as blocking for the gated side)
+  function backgroundTrend(i) {
+    const j = i - trendFilterLookback;
+    if (j < 0 || trendEma[i] === null || trendEma[j] === null) return 0;
+    return trendEma[i] > trendEma[j] ? 1 : -1;
+  }
+  function entryAllowed(i, direction) {
+    if (!filterActive) return true;
+    const gated = trendFilterSide === 'both'
+      || (direction === 1 ? trendFilterSide === 'long' : trendFilterSide === 'short');
+    if (!gated) return true;
+    return backgroundTrend(i) === direction;
+  }
 
   const signals = new Array(data.length).fill(null);
   const entryLabels = new Array(data.length).fill(null);
@@ -65,7 +90,14 @@ function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
   for (let i = 1; i < data.length; i++) {
     if (atr[i] === null) continue;
     if (align[i] === align[i - 1] || (align[i] !== 1 && align[i] !== -1)) continue;
-    placeEntry(i, align[i]);
+    if (entryAllowed(i, align[i])) {
+      placeEntry(i, align[i]);
+    } else {
+      // The trend turned against any position held in the opposite direction, so it still has to
+      // close even though the filter forbids opening the new one. EXIT_*_MOMENTUM closes only its
+      // own direction and never reverses, which is exactly that: exit without entry.
+      signals[i] = align[i] === 1 ? 'EXIT_SHORT_MOMENTUM' : 'EXIT_LONG_MOMENTUM';
+    }
     // No intermediate exit signal on a partial alignment breakdown — a position only closes via
     // SL/TP or a full opposite-direction entry (handled as a reversal by runSimulator), per the
     // validated "hold until opposite cross" behavior above.
@@ -96,6 +128,9 @@ function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
       // The trend must still be the same uninterrupted run once the cooldown has elapsed; if it
       // broke down or reversed in between, the ordinary flip logic already handled it.
       if (j >= data.length || episodeId[j] !== episode || signals[j] !== null || atr[j] === null) continue;
+      // The filter gates re-entries exactly as it gates first entries; no exit signal is needed here
+      // because a re-entry point is flat by definition.
+      if (!entryAllowed(j, direction)) continue;
 
       placeEntry(j, direction);
       reentriesByEpisode.set(episode, (reentriesByEpisode.get(episode) || 0) + 1);

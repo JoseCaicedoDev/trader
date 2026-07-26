@@ -95,10 +95,37 @@ const STRATEGY3_PARAMS = {
 // 4/5 and 0.55 to 3/5; emaSlow 52 and 70 both drop to 3/5; atrMult 4.5 collapses to 2/5 (PF 1.07).
 // vwapPeriod (200-240) and reentryCooldown (3-5) are the two forgiving dimensions.
 //
+// The trendFilter* fields add the one refinement that cost nothing: no new short while EMA(50) is
+// still above where it sat 5 candles earlier. It came out of sweeping 4,567,500 combinations (145
+// background-trend filters — price vs EMA, price vs VWAP, EMA slope and long EMA crosses, each
+// gating longs, shorts or both — across 31,500 base configurations). Two results from that sweep
+// are worth keeping in mind:
+//   - No filter raises the trade count. Filtering can only remove entries, so this whole family is
+//     a dead end for trade frequency; it was worth running only because it improves quality.
+//   - The long/short asymmetry visible in a falling live window does NOT exist in the history:
+//     across the 5 windows longs win 76.7% and shorts 78.0%. There was no long-entry defect to fix.
+// Measured with this very function on the same 5 windows, against the identical configuration with
+// the filter off: 35.0 -> 34.6 trades/window (1.47 -> 1.45/week, i.e. essentially free), win rate
+// 77.1% -> 78.0%, return +21.07% -> +23.23%, average drawdown 15.59% -> 14.83%, worst window +3.54%
+// -> +10.17%, worst drawdown unchanged at 18.35%, PF 1.55 -> 1.62, and neighborhood robustness
+// 54% -> 73%. Combined 2024-04..2026-07: 188 -> 186 trades, +140.52% -> +164.28%, PF 1.38 -> 1.44.
+// A flat plateau rather than a spike: filter periods 20, 30, 40 and 50 give identical results (60-100
+// slightly worse but still 5/5), lookbacks 3, 5 and 8 all hold 5/5, and gating shorts beats gating
+// longs (+18.4%) or both sides (+20.5%). Warm-up costs 54 of the app's 1000 candles.
+//
+// Two caveats to keep in view. First, the filter intervenes rarely — it changes only 2 of the 5
+// windows (the first and the fourth) and removes just 2 trades out of 188 over the combined span, so
+// the entire gain rests on avoiding a handful of bad shorts; that is a small sample however good the
+// aggregate looks. Second, it was selected from 4,567,500 candidates, so some selection bias is
+// unavoidable — the flat plateau and the *improved* robustness are the defence, not a substitute for
+// genuine out-of-sample evidence. In the app's current live window it costs a little: 16 -> 14 trades
+// and +11.86% -> +8.99%.
+//
 // IMPORTANT: 2h remains worse than 4h on risk (Strategy 2: 84.3% win rate, 6.6% drawdown, PF 4.41,
 // +185% combined). This tab buys trade frequency; it is not an improvement on Strategy 2 and its
 // numbers answer a different question.
 const STRATEGY4_PARAMS = {
   emaFast: 12, emaSlow: 60, vwapPeriod: 220, atrPeriod: 14, atrMult: 5.5, rrRatio: 0.45,
-  reentryCooldown: 4, maxReentries: 2
+  reentryCooldown: 4, maxReentries: 2,
+  trendFilterPeriod: 50, trendFilterLookback: 5, trendFilterSide: 'short'
 };
