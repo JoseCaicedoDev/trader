@@ -22,6 +22,7 @@ class MetricsPanel {
     this.tradesMetric = viewRoot.querySelector('.metric-trades');
     this.drawdownMetric = viewRoot.querySelector('.metric-drawdown');
     this.factorMetric = viewRoot.querySelector('.metric-factor');
+    this.factorBreakdownMetric = viewRoot.querySelector('.metric-factor-breakdown');
   }
 
   /**
@@ -76,6 +77,9 @@ class MetricsPanel {
     // 2. Win Rate
     const closingTrades = results.trades.filter(t => t.type === 'SELL' || t.type === 'COVER');
     const winningTrades = closingTrades.filter(t => t.pnl > 0);
+    const losingTrades = closingTrades.filter(t => t.pnl <= 0);
+    const longTrades = closingTrades.filter(t => t.direction === 'LONG');
+    const shortTrades = closingTrades.filter(t => t.direction === 'SHORT');
     const winRate = closingTrades.length === 0 ? 0 : (winningTrades.length / closingTrades.length) * 100;
     
     if (this.winrateMetric) {
@@ -104,6 +108,12 @@ class MetricsPanel {
         this.factorMetric.textContent = pfValue.toFixed(2);
         this.factorMetric.className = pfValue >= 1.0 ? CSS_CLASSES.METRIC_UP : CSS_CLASSES.METRIC_DOWN;
       }
+    }
+    if (this.factorBreakdownMetric) {
+      this.factorBreakdownMetric.innerHTML = `Ganadoras <span class="text-neon-emerald">${winningTrades.length}</span> · ` +
+        `Perdedoras <span class="text-neon-rose">${losingTrades.length}</span><br>` +
+        `Long <span class="text-neon-cyan">${longTrades.length}</span> · ` +
+        `Short <span class="text-neon-purple">${shortTrades.length}</span>`;
     }
   }
 }
