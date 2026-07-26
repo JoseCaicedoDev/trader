@@ -65,3 +65,31 @@ const FEE_PERCENT = 0.001; // 0.1% per side
 const STRATEGY3_PARAMS = {
   emaFast: 19, emaSlow: 45, vwapPeriod: 55, atrPeriod: 14, atrMult: 2.0, rrRatio: 1.0
 };
+
+// Strategy 4: the same VWAP + EMA 24/30 triple cross as Strategy 2, on BTC/USDT 2h instead of 4h.
+// It exists purely to trade more often — Strategy 2 fires ~14 times per 1000-candle window and that
+// is a property of how often BTC's 4h trend regime actually flips, not of its parameters. Strategy 2
+// is deliberately left untouched; this is a separate tab, not a replacement.
+//
+// Two things had to change to make 2h viable, both found by an exhaustive sweep with emaFast/emaSlow
+// pinned at 24/30 (617k combinations over 1h/2h/4h x vwapPeriod x atrMult x rrRatio x every
+// structural entry/exit variant, scored on the same 5 non-overlapping windows, 2024-04..2026-07):
+//   1. vwapPeriod 200 (2h candles) — roughly the 4h VWAP horizon in calendar terms. Simply porting
+//      Strategy 2's own parameters to 2h loses money in 4 of the 5 windows (-6.35% avg, 19% drawdown).
+//   2. Re-entry (reentryCooldown/maxReentries, see strategy-emacross.js). This is what actually
+//      raises the trade count: without it the best 2h configuration reaches ~23 trades/window, with
+//      it ~31, because a stop or target no longer parks the account until a brand-new alignment forms.
+//
+// Validated by running the production runEmaCrossStrategy itself (not a reimplementation) over the
+// 5 windows: 31.2 trades/window, 70.0% win rate, +14.52% return/window, 14.8% avg drawdown, worst
+// window +1.3% return / 18.1% drawdown, PF 1.37, positive in 5/5. Combined 2024-04..2026-07: 167
+// trades, +57.2%, 22.1% drawdown, PF 1.19. Neighborhood check: 59% of adjacent parameter points hold
+// 5/5 — decent for 2h but well below Strategy 2's 88%, which is why 2h stays a separate tab.
+//
+// IMPORTANT: 2h is strictly worse than 4h on every risk axis (Strategy 2: 84.3% win rate, 6.6%
+// drawdown, PF 4.41, +185% combined). The 2h tab buys ~2.2x the trade frequency at roughly 2.5x the
+// drawdown. Do not read its numbers as an improvement on Strategy 2 — they answer a different question.
+const STRATEGY4_PARAMS = {
+  emaFast: 24, emaSlow: 30, vwapPeriod: 200, atrPeriod: 14, atrMult: 6.0, rrRatio: 0.5,
+  reentryCooldown: 5, maxReentries: 1
+};

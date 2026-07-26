@@ -38,6 +38,24 @@ const STRATEGIES_CONFIG = [
     emaSlowLabel: STRATEGY2_PARAMS.emaSlow
   },
   {
+    // Same engine and same EMA pair as 'emacross', on the 2h timeframe with its own calibration and
+    // re-entry enabled — a separate view whose purpose is trade frequency, not better risk. See the
+    // STRATEGY4_PARAMS comment in config.js before reading anything into its metrics.
+    key: 'emacross2h',
+    title: 'VWAP + Cruce EMA 24/30 — 2h',
+    symbol: 'BTCUSDT',
+    timeframe: '2h',
+    accentColor: 'purple',
+    iconSvg: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    isEthTimeframe: false,
+    strategyType: 'emacross',
+    strategyParams: STRATEGY4_PARAMS,
+    runStrategy: runEmaCrossStrategy,
+    showStochastic: false,
+    emaFastLabel: STRATEGY4_PARAMS.emaFast,
+    emaSlowLabel: STRATEGY4_PARAMS.emaSlow
+  },
+  {
     key: 'eth',
     title: 'VWAP + EMA — ETH/USDT',
     symbol: 'ETHUSDT',
@@ -166,15 +184,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   initAlertManager();
 
   // 4. Run Initial Backtests
-  await Promise.all([
-    runBacktestFlow('wyckoff'),
-    runBacktestFlow('emacross'),
-    runBacktestFlow('eth')
-  ]);
+  await Promise.all(STRATEGIES_CONFIG.map(config => runBacktestFlow(config.key)));
 
-  // 5. Connect WebSocket Feeds (linked to one or more strategy views)
-  setupLiveFeed('BTCUSDT', ['wyckoff', 'emacross']);
-  setupLiveFeed('ETHUSDT', ['eth']);
+  // 5. Connect WebSocket Feeds. One feed per (symbol, timeframe) pair — views that share both share
+  // a socket, so the two BTC 4h strategies stay on a single stream while BTC 2h gets its own.
+  setupLiveFeed('BTCUSDT', '4h', ['wyckoff', 'emacross']);
+  setupLiveFeed('BTCUSDT', '2h', ['emacross2h']);
+  setupLiveFeed('ETHUSDT', '4h', ['eth']);
 });
 
 // Generic Backtest Flow Runner
@@ -221,9 +237,9 @@ async function runBacktestFlow(key) {
 }
 
 // Live WebSocket feed manager
-function setupLiveFeed(symbol, configKeys) {
-  const feed = new LiveFeed(symbol, '4h');
-  feeds[symbol] = feed;
+function setupLiveFeed(symbol, timeframe, configKeys) {
+  const feed = new LiveFeed(symbol, timeframe);
+  feeds[`${symbol}-${timeframe}`] = feed;
 
   feed.addEventListener('open', () => {
     const activeClass = 'w-2 h-2 rounded-full inline-block bg-neon-emerald shadow-[0_0_6px_#00e676] animate-pulse';
