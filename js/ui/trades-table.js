@@ -33,22 +33,29 @@ class TradesTable {
       return;
     }
 
-    // Pair entries and exits into roundtrips
+    // Pair entries and exits into roundtrips, PER BOOK. A strategy can run a second book alongside
+    // the main one (the counter-on-take-profit book), so two positions may be open at the same time;
+    // a single interleaved walk would pair one book's entry with the other's exit and produce rows
+    // where, say, a LONG "profits" while exiting below its entry price.
+    const openByBook = new Map();
     const roundTrips = [];
-    let openEntry = null;
 
     trades.forEach(t => {
+      const book = t.book || 'strategy';
       if (t.type === 'BUY' || t.type === 'SHORT') {
-        openEntry = t;
-      } else if (openEntry) {
-        roundTrips.push({ entry: openEntry, exit: t });
-        openEntry = null;
+        openByBook.set(book, t);
+      } else {
+        const entry = openByBook.get(book);
+        if (entry) {
+          roundTrips.push({ entry, exit: t });
+          openByBook.delete(book);
+        }
       }
     });
 
-    // Newest first
-    const rows = [...roundTrips].reverse();
-    if (openEntry) rows.unshift({ entry: openEntry, exit: null });
+    // Newest first, with any still-open position on top
+    const rows = roundTrips.sort((a, b) => b.exit.time - a.exit.time || b.exit.index - a.exit.index);
+    for (const entry of openByBook.values()) rows.unshift({ entry, exit: null });
 
     const fragment = document.createDocumentFragment();
 
@@ -89,7 +96,7 @@ class TradesTable {
           <td class="p-3"><span class="${exitBadgeClass}">${exitEventLabel}</span></td>
           <td class="p-3 text-gray-300 font-mono">$${formatPrice(exit.price)}</td>
           <td class="${pnlClass}">${pnlCell}</td>
-          <td class="p-3 text-gray-300 font-mono">$${formatPrice(exit.equity)}</td>
+          <td class="p-3 text-gray-300 font-mono">$${formatPrice(exit.accountEquity !== undefined ? exit.accountEquity : exit.equity)}</td>
         `;
       }
       fragment.appendChild(row);

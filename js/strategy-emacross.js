@@ -157,6 +157,15 @@ function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
     backtest = mergeBooks(backtest, counter, initialCapital);
   }
 
+  // Tag entries with their own label. The per-candle array cannot carry both: when a stop and the
+  // reversal it triggers land on the same candle, runSimulator overwrites that slot with the exit
+  // reason, and the entry would otherwise be displayed as "Stop Loss".
+  for (const trade of backtest.trades) {
+    if ((trade.type === 'BUY' || trade.type === 'SHORT') && !trade.eventCode && entryLabels[trade.index]) {
+      trade.eventCode = entryLabels[trade.index];
+    }
+  }
+
   backtest.eventLabels = eventLabels;
   backtest.indicators = [
     { name: `VWAP (${vwapPeriod})`, type: 'line', data: vwap, color: '#00e5ff' },
@@ -292,10 +301,17 @@ function mergeBooks(strategy, counter, initialCapital) {
     if (dd > maxDd) maxDd = dd;
   }
 
+  // Each trade's `equity` is its own book's balance on a 100 base, which would read as a wildly
+  // jumping account balance once the two books are interleaved. `accountEquity` is the balance of
+  // the whole account at that candle, which is what the history table should show.
   const trades = strategy.trades
     .map(t => ({ ...t, book: t.book || 'strategy' }))
     .concat(counter.trades)
-    .sort((a, b) => a.index - b.index || (a.book === 'strategy' ? -1 : 1));
+    .map(t => ({ ...t, accountEquity: equityCurve[t.index].value }))
+    // Same candle: the strategy's own trades must keep their original relative order (an exit and
+    // the reversal that opens right after it share an index), so only order ACROSS books here.
+    .sort((a, b) => a.index - b.index
+      || (a.book === b.book ? 0 : a.book === 'strategy' ? -1 : 1));
 
   let grossProfits = 0, grossLosses = 0;
   for (const t of trades) {
