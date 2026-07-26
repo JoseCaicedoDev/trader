@@ -90,10 +90,45 @@ const STRATEGY3_PARAMS = {
 // drawdown, PF 1.38 (the previous 24/30 setup: +57.2%, 22.1% drawdown, PF 1.19). Average holding
 // time 2.6 days. Neighborhood: 56% of adjacent points still hold 5/5, up from 46%.
 //
-// DO NOT nudge rrRatio, emaSlow or atrMult without re-running the 5-window validation — unlike the
-// rest of this file, these three sit on a narrow ridge rather than a plateau. rrRatio 0.40 drops to
-// 4/5 and 0.55 to 3/5; emaSlow 52 and 70 both drop to 3/5; atrMult 4.5 collapses to 2/5 (PF 1.07).
-// vwapPeriod (200-240) and reentryCooldown (3-5) are the two forgiving dimensions.
+// DO NOT nudge rrRatio, emaSlow or atrMult *independently* without re-running the 5-window
+// validation — unlike the rest of this file, these sit on a ridge rather than a plateau. emaSlow 52
+// and 70 both drop to 3/5. atrMult and rrRatio are coupled: what must stay fixed is their PRODUCT,
+// the distance to the target (atrMult * rrRatio = 2.475 ATR); moving one alone falls off the ridge
+// (from the original 5.5/0.45 point, rrRatio 0.40 dropped to 4/5, 0.55 to 3/5, and atrMult 4.5
+// collapsed to 2/5 at PF 1.07). vwapPeriod (200-240) and reentryCooldown (3-5) are forgiving.
+//
+// atrMult is 5.0, not the 5.5 originally shipped, and rrRatio 0.495 rather than 0.45 — the same
+// target distance with a stop 9% closer. It answers "can the losses be made smaller?", asked after
+// seeing -4.9% and -5.4% losses in the history table against +1.9% wins. The full answer is that
+// almost nothing can: the edge lives in the WIDE stop. With the target at 0.45R the break-even win
+// rate is 1/(1+0.45) = 69.0%, so anything that lowers the hit rate kills the strategy, and every
+// loss-cutting mechanism does exactly that. Measured on the 5 windows against 74.1% win / +9.78%:
+// a breakeven stop armed at +0.20R gives 56.7% win / -0.53%; at +0.30R, 65.0% / +0.86%; a 0.5R
+// trailing stop, 43.5% / +0.41%; a 1.0R trailing stop, 66.8% / +4.00%; a time stop at 16 candles,
+// 58.0% / +4.50%; at 36 candles, 66.7% / +7.90%. None beats doing nothing. The diagnostic explains
+// why: of 57 stop-outs only 33 ever travelled +0.20R in favour before dying, so a breakeven could
+// not have saved the rest, while nearly every winner traded below its entry at some point on the way
+// to target. The wide stop is what buys the 74% hit rate.
+//
+// Shrinking the stop while holding the target distance is the one variant that survives, and it buys
+// RISK, not return: average loss -5.14% -> -4.73%, worst loss -10.37% -> -9.43%, average drawdown
+// 8.26% -> 7.88%, 4/5 -> 5/5 windows positive (worst window -0.1% -> +3.0%), cushion over break-even
+// 5.5 -> 6.2 points, live window +8.58%/6.35% dd -> +9.02%/4.99% dd. Per-trade expectancy is
+// statistically indistinguishable (+0.408% -> +0.437%, t = 0.10) — do not read this as a return
+// improvement. The decisive argument is stability: 4.90-5.40 is a flat plateau where every point
+// holds 5/5, whereas 5.50 sat on its edge, and neighborhood robustness rises from 4% (1/25 adjacent
+// points holding 5/5) to 20% (5/25). Across 35 overlapping 1500-candle windows stepped by 250 — so
+// the result does not depend on where the history is cut — it wins 22 of 35 with lower average
+// drawdown (7.11% vs 7.65%) and 31/35 positive vs 28/35.
+//
+// Two costs, both real. The single combined 2024-04..2026-07 path drops from +68.0% to +58.6% (one
+// path, where compounding amplifies small differences, against the window average and the sliding
+// windows that both favour the change). And 12 extra trades make it slightly more fee-sensitive: at
+// 0.30%/side the old setting ends flat (+0.3%) and this one at -5.4%.
+//
+// Current state on the 5 windows: 56.0 trades, 73.2% win, +10.65%, 7.88% drawdown, PF 1.33, 5/5,
+// worst window +3.01%. Combined: 301 trades, +58.65%, 11.51% drawdown, PF 1.23. Live app window:
+// 27 trades, 77.8% win, +9.02%, 4.99% drawdown, PF 1.69. Longest losing streak in 280 trades: 2.
 //
 // The trendFilter* fields add the one refinement that cost nothing: no new short while EMA(50) is
 // still above where it sat 5 candles earlier. It came out of sweeping 4,567,500 combinations (145
@@ -136,9 +171,10 @@ const STRATEGY3_PARAMS = {
 //   2025-03  20 trades  70.0% win   -1.83%  |  2025-08  18 trades  66.7% win  -10.28%
 //   2026-02  24 trades  79.2% win  +22.88%
 // One window out of five positive; combined 2024-04..2026-07: 103 trades, -28.36%, 44.52% drawdown,
-// PF 0.81. The arithmetic behind it is not subtle: with rrRatio 0.45 the stop sits at 5.5 ATR and the
-// target at 2.475 ATR, so break-even needs 1/(1+0.45) = 69.0% wins. The strategy delivers 78.0%; the
-// counter entries deliver 66.0%, i.e. 2.9 points BELOW break-even, because reversing after a target
+// PF 0.81. The arithmetic behind it is not subtle: measured at the geometry in force at the time
+// (stop 5.5 ATR, target 2.475 ATR), break-even needed 1/(1+0.45) = 69.0% wins — 66.9% at today's
+// 5.0/0.495, which changes nothing below. The strategy delivers 78.0%; the counter
+// entries deliver 66.0%, i.e. BELOW break-even, because reversing after a target
 // carries no edge — measured directly, the forward move against the trend after a take-profit peaks
 // at +0.168% over 3 candles (p = 0.091, and smaller than the 0.2% round-trip cost) and decays to zero
 // beyond that. Sweeping 260 alternative stop/target geometries for the counter book produced only
@@ -146,7 +182,7 @@ const STRATEGY3_PARAMS = {
 // The app's live window is the one window where it works (10 trades, 80% win, +8.17%, PF 1.84),
 // which is exactly why it looks convincing on screen. Set counterOnTP: false to switch it off.
 const STRATEGY4_PARAMS = {
-  emaFast: 12, emaSlow: 60, vwapPeriod: 220, atrPeriod: 14, atrMult: 5.5, rrRatio: 0.45,
+  emaFast: 12, emaSlow: 60, vwapPeriod: 220, atrPeriod: 14, atrMult: 5.0, rrRatio: 0.495,
   reentryCooldown: 4, maxReentries: 2,
   trendFilterPeriod: 50, trendFilterLookback: 5, trendFilterSide: 'short',
   counterOnTP: true
