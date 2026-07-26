@@ -12,8 +12,9 @@ const EVENT_LABELS = Object.freeze({
   SOW: 'SOW', 
   LPSY: 'LPSY',
   STOCH_EXIT: 'Cruce %K/%D', 
-  STOP_LOSS: 'Stop Loss', 
+  STOP_LOSS: 'Stop Loss',
   TAKE_PROFIT: 'Take Profit',
+  COUNTER_ON_TP: 'Contraria tras TP',
   EMA_CROSS_UP: 'Cruce Alcista EMA',
   EMA_CROSS_DOWN: 'Cruce Bajista EMA'
 });

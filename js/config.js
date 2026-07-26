@@ -124,8 +124,30 @@ const STRATEGY3_PARAMS = {
 // IMPORTANT: 2h remains worse than 4h on risk (Strategy 2: 84.3% win rate, 6.6% drawdown, PF 4.41,
 // +185% combined). This tab buys trade frequency; it is not an improvement on Strategy 2 and its
 // numbers answer a different question.
+// counterOnTP opens a SECOND, independent position in the opposite direction on the exact candle
+// where the strategy closes a trade at its target, exiting only through its own stop or target — so
+// at most two positions are live at once, one from the strategy and one from the counter. Capital is
+// split evenly between the two books, which is what "two simultaneous positions" means without
+// leverage. Requested explicitly after reviewing the numbers below; it is NOT recommended on the
+// evidence, and the metrics shown in the app are those of the combined account.
+//
+// The counter book measured on its own, same 5 windows, same stop/target geometry:
+//   2024-04  17 trades  70.6% win   -5.23%  |  2024-09  18 trades  50.0% win  -23.86%
+//   2025-03  20 trades  70.0% win   -1.83%  |  2025-08  18 trades  66.7% win  -10.28%
+//   2026-02  24 trades  79.2% win  +22.88%
+// One window out of five positive; combined 2024-04..2026-07: 103 trades, -28.36%, 44.52% drawdown,
+// PF 0.81. The arithmetic behind it is not subtle: with rrRatio 0.45 the stop sits at 5.5 ATR and the
+// target at 2.475 ATR, so break-even needs 1/(1+0.45) = 69.0% wins. The strategy delivers 78.0%; the
+// counter entries deliver 66.0%, i.e. 2.9 points BELOW break-even, because reversing after a target
+// carries no edge — measured directly, the forward move against the trend after a take-profit peaks
+// at +0.168% over 3 candles (p = 0.091, and smaller than the 0.2% round-trip cost) and decays to zero
+// beyond that. Sweeping 260 alternative stop/target geometries for the counter book produced only
+// tiny-sample winners (5-8 trades/window, one with PF 20.99) — curve fitting, not an edge.
+// The app's live window is the one window where it works (10 trades, 80% win, +8.17%, PF 1.84),
+// which is exactly why it looks convincing on screen. Set counterOnTP: false to switch it off.
 const STRATEGY4_PARAMS = {
   emaFast: 12, emaSlow: 60, vwapPeriod: 220, atrPeriod: 14, atrMult: 5.5, rrRatio: 0.45,
   reentryCooldown: 4, maxReentries: 2,
-  trendFilterPeriod: 50, trendFilterLookback: 5, trendFilterSide: 'short'
+  trendFilterPeriod: 50, trendFilterLookback: 5, trendFilterSide: 'short',
+  counterOnTP: true
 };

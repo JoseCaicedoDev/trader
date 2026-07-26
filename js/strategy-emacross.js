@@ -31,7 +31,9 @@
 function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
   const { emaFast, emaSlow, vwapPeriod, atrPeriod, atrMult, rrRatio,
           reentryCooldown = 0, maxReentries = 0,
-          trendFilterPeriod = 0, trendFilterLookback = 0, trendFilterSide = null } = params;
+          trendFilterPeriod = 0, trendFilterLookback = 0, trendFilterSide = null,
+          counterOnTP = false, counterAtrMult = null, counterRrRatio = null,
+          counterOnlyAfter = null } = params;
   const emaF = calculateEMA(data, emaFast);
   const emaS = calculateEMA(data, emaSlow);
   const vwap = calculateRollingVWAP(data, vwapPeriod);
@@ -140,6 +142,21 @@ function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
     eventLabels = entryLabels.slice();
     backtest = runSimulator(data, signals, initialCapital, feePercent, stopLossLevels, takeProfitLevels, eventLabels);
   }
+  // Counter book (params.counterOnTP): a SECOND, independent position that opens in the opposite
+  // direction on the exact candle where the strategy closes a trade at its target, and exits only
+  // through its own stop or target — so at most two positions are ever live at once, one from the
+  // strategy and one from the counter (e.g. a short from a take-profit running alongside a long from
+  // the strategy). Capital is split evenly between the two, which is what "two simultaneous
+  // positions" means when there is no leverage: each book trades half the account.
+  if (counterOnTP) {
+    const counter = runCounterBook(data, backtest, eventLabels, atr, {
+      atrMult: counterAtrMult === null ? atrMult : counterAtrMult,
+      rrRatio: counterRrRatio === null ? rrRatio : counterRrRatio,
+      onlyAfter: counterOnlyAfter
+    }, initialCapital, feePercent);
+    backtest = mergeBooks(backtest, counter, initialCapital);
+  }
+
   backtest.eventLabels = eventLabels;
   backtest.indicators = [
     { name: `VWAP (${vwapPeriod})`, type: 'line', data: vwap, color: '#00e5ff' },
@@ -176,4 +193,124 @@ function runEmaCrossStrategy(data, params, initialCapital, feePercent) {
   };
 
   return backtest;
+}
+
+// Counter book simulation. Deliberately NOT runSimulator: this book must SKIP a trigger that lands
+// while it already holds a position, whereas runSimulator would treat an opposite signal as a
+// reversal. Everything else (intrabar stop-before-target, fee model, cash-settled sizing) mirrors it.
+// `strategyBacktest`/`exitLabels` supply the trigger candles — the ones where the strategy closed at
+// its target. A counter trade closing at its own target never triggers another one: no chaining.
+function runCounterBook(data, strategyBacktest, exitLabels, atr, cfg, initialCapital, feePercent) {
+  const triggers = new Map();
+  for (const trade of strategyBacktest.trades) {
+    if (trade.type !== 'SELL' && trade.type !== 'COVER') continue;
+    if (exitLabels[trade.index] !== 'TAKE_PROFIT') continue;
+    if (cfg.onlyAfter && trade.direction !== cfg.onlyAfter) continue;
+    triggers.set(trade.index, trade.direction === 'LONG' ? -1 : 1);
+  }
+
+  let cash = initialCapital, direction = 0, units = 0, entryPrice = 0, entryCost = 0, entryTime = null;
+  let stop = 0, target = 0, peak = initialCapital, maxDd = 0;
+  const trades = [], equityCurve = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const candle = data[i];
+
+    if (direction !== 0) {
+      const hitStop = direction === 1 ? candle.low <= stop : candle.high >= stop;
+      const hitTarget = direction === 1 ? candle.high >= target : candle.low <= target;
+      if (hitStop || hitTarget) {
+        const exitPrice = hitStop ? stop : target;
+        let pnl, net;
+        if (direction === 1) {
+          const gross = units * exitPrice;
+          net = gross - gross * feePercent;
+          pnl = net - entryCost;
+        } else {
+          const grossPnl = units * (entryPrice - exitPrice);
+          net = entryCost + grossPnl - units * exitPrice * feePercent;
+          pnl = net - entryCost;
+        }
+        cash = net;
+        trades.push({
+          index: i, type: direction === 1 ? 'SELL' : 'COVER', direction: direction === 1 ? 'LONG' : 'SHORT',
+          time: candle.time, price: exitPrice, fee: units * exitPrice * feePercent, size: units,
+          cashRemaining: cash, pnl, pnlPercent: (pnl / entryCost) * 100, equity: cash,
+          holdTime: candle.time - entryTime, book: 'counter',
+          eventCode: hitStop ? 'STOP_LOSS' : 'TAKE_PROFIT'
+        });
+        direction = 0; units = 0; entryPrice = 0; entryCost = 0; entryTime = null;
+      }
+    }
+
+    const trigger = triggers.get(i);
+    if (trigger !== undefined && direction === 0 && atr[i] !== null) {
+      const stopDist = atr[i] * cfg.atrMult;
+      units = cash * (1 - feePercent) / candle.close;
+      entryPrice = candle.close; entryCost = cash; entryTime = candle.time; direction = trigger;
+      stop = trigger === 1 ? entryPrice - stopDist : entryPrice + stopDist;
+      target = trigger === 1 ? entryPrice + stopDist * cfg.rrRatio : entryPrice - stopDist * cfg.rrRatio;
+      trades.push({
+        index: i, type: trigger === 1 ? 'BUY' : 'SHORT', direction: trigger === 1 ? 'LONG' : 'SHORT',
+        time: candle.time, price: candle.close, fee: cash * feePercent, size: units,
+        cashRemaining: 0, pnl: 0, pnlPercent: 0, equity: cash, book: 'counter',
+        eventCode: 'COUNTER_ON_TP'
+      });
+      cash = 0;
+    }
+
+    let equity = cash;
+    if (direction === 1) equity += units * candle.close;
+    else if (direction === -1) equity += entryCost + units * (entryPrice - candle.close);
+    equityCurve.push({ time: candle.time, value: equity });
+    if (equity > peak) peak = equity;
+    const dd = (peak - equity) / peak;
+    if (dd > maxDd) maxDd = dd;
+  }
+
+  let finalBalance = cash;
+  const lastClose = data[data.length - 1].close;
+  if (direction === 1) finalBalance = cash + units * lastClose * (1 - feePercent);
+  else if (direction === -1) finalBalance = cash + entryCost + units * (entryPrice - lastClose) - units * lastClose * feePercent;
+
+  return { trades, equityCurve, finalBalance, maxDrawdown: maxDd * 100, triggerCount: triggers.size };
+}
+
+// Portfolio view of the two books: half the account each, so the reported equity curve, balance and
+// drawdown are those of the account as a whole rather than of either book alone.
+function mergeBooks(strategy, counter, initialCapital) {
+  const half = 0.5;
+  const equityCurve = strategy.equityCurve.map((point, i) => ({
+    time: point.time,
+    value: half * point.value + half * counter.equityCurve[i].value
+  }));
+
+  let peak = initialCapital, maxDd = 0;
+  for (const point of equityCurve) {
+    if (point.value > peak) peak = point.value;
+    const dd = (peak - point.value) / peak;
+    if (dd > maxDd) maxDd = dd;
+  }
+
+  const trades = strategy.trades
+    .map(t => ({ ...t, book: t.book || 'strategy' }))
+    .concat(counter.trades)
+    .sort((a, b) => a.index - b.index || (a.book === 'strategy' ? -1 : 1));
+
+  let grossProfits = 0, grossLosses = 0;
+  for (const t of trades) {
+    if (t.type !== 'SELL' && t.type !== 'COVER') continue;
+    if (t.pnl > 0) grossProfits += t.pnl; else grossLosses += Math.abs(t.pnl);
+  }
+
+  return {
+    ...strategy,
+    trades,
+    equityCurve,
+    finalBalance: half * strategy.finalBalance + half * counter.finalBalance,
+    maxDrawdown: maxDd * 100,
+    profitFactor: grossLosses === 0 ? (grossProfits > 0 ? Infinity : 1) : grossProfits / grossLosses,
+    totalTrades: trades.filter(t => t.type === 'SELL' || t.type === 'COVER').length,
+    books: { strategy, counter }
+  };
 }

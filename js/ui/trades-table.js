@@ -56,9 +56,10 @@ class TradesTable {
       const row = document.createElement('tr');
       row.className = CSS_CLASSES.ROW_BORDER;
 
-      const entryEventLabel = eventLabels && eventLabels[entry.index] 
-        ? (EVENT_LABELS[eventLabels[entry.index]] || eventLabels[entry.index]) 
-        : '-';
+      // A trade may carry its own label — the counter book shares candle indices with the strategy's
+      // own exits, so the per-candle array cannot tell the two apart. Prefer the trade's when set.
+      const entryCode = entry.eventCode || (eventLabels ? eventLabels[entry.index] : null);
+      const entryEventLabel = entryCode ? (EVENT_LABELS[entryCode] || entryCode) : '-';
 
       if (!exit) {
         row.innerHTML = `
@@ -71,9 +72,8 @@ class TradesTable {
           <td class="p-3 text-gray-300 font-mono">-</td>
         `;
       } else {
-        const exitEventLabel = eventLabels && eventLabels[exit.index] 
-          ? (EVENT_LABELS[eventLabels[exit.index]] || eventLabels[exit.index]) 
-          : '-';
+        const exitCode = exit.eventCode || (eventLabels ? eventLabels[exit.index] : null);
+        const exitEventLabel = exitCode ? (EVENT_LABELS[exitCode] || exitCode) : '-';
           
         const sign = exit.pnl >= 0 ? '+' : '';
         const pnlCell = `${sign}$${formatPrice(exit.pnl)} (${sign}${exit.pnlPercent.toFixed(2)}%)`;

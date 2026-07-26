@@ -194,7 +194,9 @@ class ChartManager {
     if (!trades) return;
     const markers = [];
     trades.forEach(t => {
-      const eventCode = eventLabels ? eventLabels[t.index] : null;
+      // A trade may carry its own label (the counter book shares candle indices with the strategy's
+      // exits, so the per-candle array cannot tell the two apart); fall back to it when present.
+      const eventCode = t.eventCode || (eventLabels ? eventLabels[t.index] : null);
       if (t.type === 'BUY') {
         markers.push({
           time: t.time, position: 'belowBar', color: '#00e676', shape: 'arrowUp',
