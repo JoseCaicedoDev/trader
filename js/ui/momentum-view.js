@@ -78,9 +78,7 @@ class MomentumView {
     card.className = `${CSS_CLASSES.MOMENTUM_CARD} ${CSS_CLASSES[`MOMENTUM_CARD_TONE_${reading.confluence.toUpperCase()}`]}`;
     card.append(
       buildRow('RSI', buildRsiValue(reading.rsi, reading.rsiChange), reading.rsiZone),
-      buildRow('Hist. MACD', buildTextEl('span', CSS_CLASSES.MOMENTUM_ROW_VALUE, formatPrice(reading.histogram, asset.decimals)), reading.macdBias),
-      buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_DETAIL,
-        `MACD ${formatPrice(reading.macdLine, asset.decimals)} − Señal ${formatPrice(reading.signal, asset.decimals)}`),
+      buildMacdRow('MACD', reading.macdBars, reading.macdBias, asset.decimals),
       buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_NOTE, reading.macdNote)
     );
     return card;
@@ -100,6 +98,38 @@ function readMomentum({ rsi, macd }) {
   // histogram's sign; an RSI in the 40–65 neutral band never tints the card.
   const zone = rsiZone(rsi[last]);
   const macdDirection = hist >= 0 ? 'up' : 'down';
+
+  // Last 6 bars of the MACD histogram, from oldest (offset 5) to current forming candle (offset 0).
+  const macdBars = [];
+  const barCount = 6;
+  const startIdx = Math.max(1, last - barCount + 1);
+  for (let idx = startIdx; idx <= last; idx++) {
+    const h = macd.histogram[idx];
+    const ph = macd.histogram[idx - 1];
+    const offset = last - idx;
+    macdBars.push({
+      offset,
+      isCurrent: offset === 0,
+      label: offset === 0 ? 'ACT' : `-${offset}`,
+      tooltipLabel: offset === 0 ? 'Vela actual (en curso)' : `Hace ${offset} vela${offset > 1 ? 's' : ''}`,
+      hist: h,
+      prevHist: ph,
+      state: classifyMacdBar(h, ph)
+    });
+  }
+  while (macdBars.length < barCount) {
+    const missingOffset = barCount - macdBars.length;
+    macdBars.unshift({
+      offset: missingOffset,
+      isCurrent: false,
+      label: `-${missingOffset}`,
+      tooltipLabel: `Hace ${missingOffset} velas`,
+      hist: null,
+      prevHist: null,
+      state: classifyMacdBar(null, null)
+    });
+  }
+
   return {
     confluence: zone.tone === macdDirection ? macdDirection : 'neutral',
     rsi: rsi[last],
@@ -109,10 +139,83 @@ function readMomentum({ rsi, macd }) {
     macdLine: macd.macd[last],
     signal: macd.signal[last],
     macdBias: hist >= 0 ? { text: 'Alcista', tone: 'up' } : { text: 'Bajista', tone: 'down' },
+    macdBars,
     macdNote: crossed
       ? `Cruce ${hist >= 0 ? 'alcista' : 'bajista'} en la última vela`
       : `Momentum ${Math.abs(hist) >= Math.abs(prevHist) ? 'creciente' : 'decreciente'}`
   };
+}
+
+// 4-color MACD histogram acceleration classification (TradingView standard):
+// - Positive & growing: bright green (accelerating bullish)
+// - Positive & falling: dark green (decelerating bullish)
+// - Negative & falling: bright red (accelerating bearish)
+// - Negative & rising: dark red (decelerating / braking bearish)
+function classifyMacdBar(hist, prevHist) {
+  if (hist === null || prevHist === null || hist === undefined || prevHist === undefined) {
+    return {
+      type: 'neutral',
+      description: 'Sin datos',
+      cssClass: CSS_CLASSES.MOMENTUM_HIST_DOT_NEUTRAL
+    };
+  }
+  if (hist >= 0) {
+    if (hist >= prevHist) {
+      return {
+        type: 'up_grow',
+        description: 'Alcista acelerando',
+        cssClass: CSS_CLASSES.MOMENTUM_HIST_DOT_UP_GROW
+      };
+    } else {
+      return {
+        type: 'up_fall',
+        description: 'Alcista desacelerando',
+        cssClass: CSS_CLASSES.MOMENTUM_HIST_DOT_UP_FALL
+      };
+    }
+  } else {
+    if (hist <= prevHist) {
+      return {
+        type: 'down_grow',
+        description: 'Bajista acelerando',
+        cssClass: CSS_CLASSES.MOMENTUM_HIST_DOT_DOWN_GROW
+      };
+    } else {
+      return {
+        type: 'down_fall',
+        description: 'Bajista frenando',
+        cssClass: CSS_CLASSES.MOMENTUM_HIST_DOT_DOWN_FALL
+      };
+    }
+  }
+}
+
+function buildMacdRow(label, macdBars, badge, decimals) {
+  const row = buildTextEl('div', CSS_CLASSES.MOMENTUM_HIST_DOTS_ROW, '');
+  const leftGroup = buildTextEl('div', CSS_CLASSES.MOMENTUM_HIST_LABEL_GROUP, '');
+  leftGroup.append(
+    buildTextEl('span', CSS_CLASSES.MOMENTUM_ROW_LABEL, label),
+    buildMacdDots(macdBars, decimals)
+  );
+  const badgeEl = buildTextEl('span', CSS_CLASSES[`MOMENTUM_BADGE_${badge.tone.toUpperCase()}`], badge.text);
+  row.append(leftGroup, badgeEl);
+  return row;
+}
+
+function buildMacdDots(bars, decimals) {
+  const container = buildTextEl('div', CSS_CLASSES.MOMENTUM_HIST_DOTS_CONTAINER, '');
+  bars.forEach(bar => {
+    const ringClass = bar.isCurrent ? ` ${CSS_CLASSES.MOMENTUM_HIST_DOT_CURRENT}` : '';
+    const dot = buildTextEl(
+      'span',
+      `${CSS_CLASSES.MOMENTUM_HIST_DOT_BASE} ${bar.state.cssClass}${ringClass}`,
+      ''
+    );
+    const histFormatted = bar.hist !== null && bar.hist !== undefined ? formatPrice(bar.hist, decimals) : '—';
+    dot.title = `${bar.tooltipLabel}: Hist. ${histFormatted} (${bar.state.description})`;
+    container.appendChild(dot);
+  });
+  return container;
 }
 
 // Overbought/oversold are the extreme ends of a bullish/bearish reading, so they share the

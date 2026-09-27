@@ -64,6 +64,16 @@ const CSS_CLASSES = Object.freeze({
   MOMENTUM_ASSET_ERROR: 'text-xs text-neon-rose font-medium',
   MOMENTUM_CARD_TITLE: 'text-sm font-bold text-white tracking-wide',
   MOMENTUM_CARD_ROW: 'grid grid-cols-[4.5rem_1fr_auto] items-center gap-2',
+  MOMENTUM_HIST_DOTS_ROW: 'flex items-center justify-between text-xs',
+  MOMENTUM_HIST_LABEL_GROUP: 'flex items-center gap-2 min-w-0',
+  MOMENTUM_HIST_DOTS_CONTAINER: 'flex items-center gap-1 shrink-0',
+  MOMENTUM_HIST_DOT_BASE: 'w-2.5 h-2.5 rounded-full shrink-0 transition-transform hover:scale-150 cursor-help',
+  MOMENTUM_HIST_DOT_UP_GROW: 'bg-[#00e676] shadow-[0_0_6px_#00e676]',
+  MOMENTUM_HIST_DOT_UP_FALL: 'bg-[#004d25] border border-[#00e676]/60',
+  MOMENTUM_HIST_DOT_DOWN_GROW: 'bg-[#ff1744] shadow-[0_0_6px_#ff1744]',
+  MOMENTUM_HIST_DOT_DOWN_FALL: 'bg-[#4d0010] border border-[#ff1744]/60',
+  MOMENTUM_HIST_DOT_NEUTRAL: 'bg-white/20 border border-white/30',
+  MOMENTUM_HIST_DOT_CURRENT: 'ring-1.5 ring-white/90 ring-offset-1 ring-offset-dark-sidebar/80 animate-pulse',
   // Shows how the histogram is derived (MACD line minus signal line), since unlike RSI its
   // value is in USD and has no fixed scale.
   MOMENTUM_CARD_DETAIL: 'text-[11px] text-gray-400 font-medium tabular-nums',
