@@ -76,6 +76,27 @@ const STRATEGIES_CONFIG = [
   }
 ];
 
+// RSI + MACD tab: indicators only (no backtest). One row per asset, one card per interval.
+// `decimals` sizes the MACD numbers to each asset's price scale (XRP's histogram can be
+// ~0.00003); `priceDecimals` keeps prices unambiguous in es locale ($92,11, not $92,107).
+// HYPE reads the USDⓈ-M perpetual: its spot listing is too new for weekly/daily history.
+const MOMENTUM_ASSETS = [
+  { symbol: 'BTCUSDT', label: 'BTC', decimals: 1, priceDecimals: 0, market: 'spot' },
+  { symbol: 'HYPEUSDT', label: 'HYPE', decimals: 3, priceDecimals: 2, market: 'futures', note: 'Futuros perpetuos (Binance)' },
+  { symbol: 'SOLUSDT', label: 'SOL', decimals: 2, priceDecimals: 2, market: 'spot' },
+  { symbol: 'XRPUSDT', label: 'XRP', decimals: 5, priceDecimals: 4, market: 'spot' }
+];
+const MOMENTUM_TIMEFRAMES = [
+  { interval: '15m', label: '15 min' },
+  { interval: '1h', label: '1 H' },
+  { interval: '2h', label: '2 H' },
+  { interval: '4h', label: '4 H' },
+  { interval: '12h', label: '12 H' },
+  { interval: '1d', label: '1 D' },
+  { interval: '1w', label: '1 S' }
+];
+const MOMENTUM_REFRESH_MS = 60 * 1000;
+
 const views = {};
 const feeds = {};
 
@@ -94,10 +115,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     const root = clone.querySelector('.strategy-view');
 
     root.id = `strategy-view-${config.key}`;
-    if (config.key === 'wyckoff') {
-      root.classList.remove('hidden');
-      root.classList.add('grid');
-    }
 
     // Set title and colors
     const titleEl = root.querySelector('.strategy-title');
@@ -182,12 +199,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   Object.keys(views).forEach(k => {
     switcherMap[k] = views[k].strategyView;
   });
+  const momentumView = createMomentumView();
+  if (momentumView) switcherMap.momentum = momentumView;
   StrategyView.initStrategySwitcher(switcherMap);
 
   // 3. Initialize alert manager bindings for all newly generated checkbox and button classes
   initAlertManager();
 
-  // 4. Run Initial Backtests
+  // 4. Run Initial Backtests (the momentum tab loads in parallel and refreshes on its own timer)
+  if (momentumView) {
+    refreshMomentumView(momentumView);
+    setInterval(() => refreshMomentumView(momentumView), MOMENTUM_REFRESH_MS);
+  }
   await Promise.all(STRATEGIES_CONFIG.map(config => runBacktestFlow(config.key)));
 
   // 5. Connect WebSocket Feeds. One feed per (symbol, timeframe) pair — views that share both share
@@ -328,4 +351,48 @@ function setupLiveFeed(symbol, timeframe, configKeys) {
   });
 
   feed.connect();
+}
+
+// The switcher only needs `root`, `accentColor` and a `chartManager` exposing resize(),
+// so MomentumView plugs in as its own chartManager without touching StrategyView.
+function createMomentumView() {
+  const root = document.getElementById('momentum-view');
+  if (!root) return null;
+  const view = new MomentumView(root, MOMENTUM_ASSETS, MOMENTUM_TIMEFRAMES);
+  return { root, accentColor: view.accentColor, chartManager: view, momentumView: view };
+}
+
+// Assets load independently so one failing symbol only blanks its own row.
+async function refreshMomentumView({ momentumView }) {
+  const results = await Promise.allSettled(MOMENTUM_ASSETS.map(asset => refreshMomentumAsset(momentumView, asset)));
+  const failed = results.filter(r => r.status === 'rejected').length;
+  if (failed === 0) {
+    momentumView.setStatus(`Actualizado ${new Date().toLocaleTimeString()} · incluye la vela en curso`);
+  } else {
+    momentumView.setStatus(`${failed} activo(s) no se pudieron cargar — reintentando en 60 s`, true);
+  }
+}
+
+async function refreshMomentumAsset(momentumView, asset) {
+  const fetchKlines = asset.market === 'futures' ? fetchBinanceFuturesKlines : fetchBinanceKlines;
+  try {
+    const entries = await Promise.all(MOMENTUM_TIMEFRAMES.map(async tf => {
+      const raw = await fetchKlines(asset.symbol, tf.interval, 500);
+      return [tf.interval, buildMomentumSnapshot(raw)];
+    }));
+    momentumView.updateAsset(asset.symbol, Object.fromEntries(entries));
+  } catch (error) {
+    console.error(error);
+    momentumView.setAssetError(asset.symbol, `Error al cargar ${asset.label}: ${error.message}`);
+    throw error;
+  }
+}
+
+function buildMomentumSnapshot(rawKlines) {
+  const candles = rawKlines.map(k => ({ time: Math.floor(k[0] / 1000), close: parseFloat(k[4]) }));
+  return {
+    rsi: calculateRSI(candles, 14),
+    macd: calculateMACD(candles),
+    lastClose: candles[candles.length - 1].close
+  };
 }

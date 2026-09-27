@@ -186,3 +186,32 @@ function smoothSMAOfArray(arr, period) {
   }
   return out;
 }
+
+// EMA over a plain numeric array that may start with nulls (e.g. another indicator's output).
+// Seeds with the SMA of the first `period` non-null values, like calculateEMA does for closes.
+function emaOfArray(arr, period) {
+  const out = new Array(arr.length).fill(null);
+  const start = arr.findIndex(v => v !== null);
+  if (start < 0 || arr.length - start < period) return out;
+
+  let sum = 0;
+  for (let i = start; i < start + period; i++) sum += arr[i];
+  out[start + period - 1] = sum / period;
+
+  const multiplier = 2 / (period + 1);
+  for (let i = start + period; i < arr.length; i++) {
+    out[i] = (arr[i] - out[i - 1]) * multiplier + out[i - 1];
+  }
+  return out;
+}
+
+// MACD (Appel): fast EMA − slow EMA of closes, a signal EMA of that line, and their difference
+// as the histogram. Standard 12/26/9 unless overridden.
+function calculateMACD(data, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+  const fast = calculateEMA(data, fastPeriod);
+  const slow = calculateEMA(data, slowPeriod);
+  const macd = fast.map((f, i) => (f === null || slow[i] === null ? null : f - slow[i]));
+  const signal = emaOfArray(macd, signalPeriod);
+  const histogram = macd.map((m, i) => (m === null || signal[i] === null ? null : m - signal[i]));
+  return { macd, signal, histogram };
+}

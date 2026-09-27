@@ -8,6 +8,17 @@ async function fetchBinanceKlines(symbol, interval, limit) {
   return await response.json();
 }
 
+// USDⓈ-M perpetual futures klines — same response shape as spot. Used for assets whose spot
+// listing is too recent to have indicator history (e.g. HYPE). CORS-open like the spot API.
+async function fetchBinanceFuturesKlines(symbol, interval, limit) {
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Binance Futures API respondió con código ${response.status}: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
 // Binance returns at most 1,000 candles per request. Fetch a continuous history by
 // advancing the start timestamp after each full page; the caller still receives the
 // same kline shape as fetchBinanceKlines.
