@@ -68,18 +68,21 @@ class MomentumView {
 
   buildCard(tf, snapshot, asset) {
     const card = buildTextEl('article', '', '');
-    card.append(buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_TITLE, tf.label));
     const reading = snapshot && readMomentum(snapshot);
     if (!reading) {
       card.className = `${CSS_CLASSES.MOMENTUM_CARD} ${CSS_CLASSES.MOMENTUM_CARD_TONE_NEUTRAL}`;
-      card.append(buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_NOTE, 'Sin historial suficiente'));
+      card.append(
+        buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_TITLE, tf.label),
+        buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_NOTE, 'Sin historial suficiente')
+      );
       return card;
     }
     card.className = `${CSS_CLASSES.MOMENTUM_CARD} ${CSS_CLASSES[`MOMENTUM_CARD_TONE_${reading.confluence.toUpperCase()}`]}`;
     card.append(
-      buildRow('RSI', buildRsiValue(reading.rsi, reading.rsiChange), reading.rsiZone),
-      buildMacdRow('MACD', reading.macdBars, reading.macdBias, asset.decimals),
-      buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_NOTE, reading.macdNote)
+      buildCardHeader(tf.label, reading.macdBias),
+      buildRsiRow(reading.rsi, reading.rsiChange, reading.rsiZone),
+      buildMacdRow('MACD', reading.macdBars, asset.decimals),
+      buildNote(reading.macdNote)
     );
     return card;
   }
@@ -190,15 +193,36 @@ function classifyMacdBar(hist, prevHist) {
   }
 }
 
-function buildMacdRow(label, macdBars, badge, decimals) {
+function buildCardHeader(label, badge) {
+  const row = buildTextEl('div', CSS_CLASSES.MOMENTUM_CARD_HEADER, '');
+  row.append(
+    buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_TITLE, label),
+    buildTextEl('span', CSS_CLASSES[`MOMENTUM_BADGE_${badge.tone.toUpperCase()}`], badge.text)
+  );
+  return row;
+}
+
+function buildRsiRow(value, change, zone) {
+  const row = buildTextEl('div', CSS_CLASSES.MOMENTUM_CARD_RSI_ROW, '');
+  const group = buildTextEl('div', CSS_CLASSES.MOMENTUM_CARD_RSI_GROUP, '');
+
+  const valEl = buildTextEl('span', CSS_CLASSES.MOMENTUM_ROW_VALUE, formatPrice(value, 1));
+  const trend = buildTextEl('span', ...rsiTrendStyle(change));
+  trend.title = 'Cambio del RSI respecto a la vela anterior';
+
+  const zoneBadge = buildTextEl('span', CSS_CLASSES[`MOMENTUM_BADGE_${zone.tone.toUpperCase()}`], zone.text);
+
+  group.append(valEl, trend, zoneBadge);
+  row.append(buildTextEl('span', CSS_CLASSES.MOMENTUM_ROW_LABEL, 'RSI'), group);
+  return row;
+}
+
+function buildMacdRow(label, macdBars, decimals) {
   const row = buildTextEl('div', CSS_CLASSES.MOMENTUM_HIST_DOTS_ROW, '');
-  const leftGroup = buildTextEl('div', CSS_CLASSES.MOMENTUM_HIST_LABEL_GROUP, '');
-  leftGroup.append(
+  row.append(
     buildTextEl('span', CSS_CLASSES.MOMENTUM_ROW_LABEL, label),
     buildMacdDots(macdBars, decimals)
   );
-  const badgeEl = buildTextEl('span', CSS_CLASSES[`MOMENTUM_BADGE_${badge.tone.toUpperCase()}`], badge.text);
-  row.append(leftGroup, badgeEl);
   return row;
 }
 
@@ -216,6 +240,12 @@ function buildMacdDots(bars, decimals) {
     container.appendChild(dot);
   });
   return container;
+}
+
+function buildNote(text) {
+  const el = buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_NOTE, text);
+  el.title = text;
+  return el;
 }
 
 // Overbought/oversold are the extreme ends of a bullish/bearish reading, so they share the

@@ -63,7 +63,7 @@
 
   <!-- Strategy Switcher: choose between the main Wyckoff-unified system and a simpler VWAP + EMA21/50
        crossover reference strategy, each with its own chart, sidebar and metrics. -->
-  <nav class="relative z-10 grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-3 px-4 lg:px-8 pt-4">
+  <nav class="relative z-10 grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-2.5 sm:gap-3 px-3 sm:px-4 lg:px-8 pt-3 sm:pt-4">
     <!-- Strategy Switcher (Left) -->
     <div class="flex items-center gap-2 overflow-x-auto snap-x md:flex-wrap md:overflow-visible pb-1 md:pb-0">
       <button type="button" data-strategy="wyckoff" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors shrink-0 whitespace-nowrap snap-start">
@@ -103,13 +103,13 @@
   <main id="app-container" class="relative z-10 grid lg:min-h-0 w-full">
     <!-- RSI + MACD multi-timeframe view (not a strategy: no backtest, indicators only) -->
     <!-- RSI + MACD multi-asset / multi-timeframe summary (not a strategy: no backtest, indicators only) -->
-    <section id="momentum-view" class="grid content-start gap-3 p-4 lg:px-8 lg:py-3 lg:h-full lg:min-h-0 lg:overflow-y-auto min-w-0" aria-labelledby="momentum-view-title">
-      <header class="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-2">
-        <div class="flex items-center gap-3">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-neon-cyan drop-shadow-[0_0_8px_rgba(0,229,255,0.6)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          <h1 id="momentum-view-title" class="text-lg font-bold tracking-wide bg-gradient-to-r from-white via-gray-100 to-neon-cyan bg-clip-text text-transparent">RSI (14) + MACD (12, 26, 9) — multi-activo</h1>
+    <section id="momentum-view" class="grid content-start gap-2.5 sm:gap-3 p-2.5 sm:p-4 lg:px-8 lg:py-3 lg:h-full lg:min-h-0 lg:overflow-y-auto min-w-0" aria-labelledby="momentum-view-title">
+      <header class="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-1.5 sm:gap-2">
+        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 text-neon-cyan drop-shadow-[0_0_8px_rgba(0,229,255,0.6)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <h1 id="momentum-view-title" class="text-base sm:text-lg font-bold tracking-wide bg-gradient-to-r from-white via-gray-100 to-neon-cyan bg-clip-text text-transparent truncate">RSI (14) + MACD (12, 26, 9) — multi-activo</h1>
         </div>
-        <span class="momentum-status text-xs text-gray-500 font-medium" aria-live="polite">Conectando con Binance API...</span>
+        <span class="momentum-status text-[11px] sm:text-xs text-gray-500 font-medium" aria-live="polite">Conectando con Binance API...</span>
       </header>
 
       <!-- One row per asset, each with one summary card per timeframe; built by MomentumView -->
