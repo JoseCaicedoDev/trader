@@ -95,7 +95,7 @@ const MOMENTUM_TIMEFRAMES = [
   { interval: '1d', label: '1 D' },
   { interval: '1w', label: '1 S' }
 ];
-const MOMENTUM_REFRESH_MS = 60 * 1000;
+const MOMENTUM_REFRESH_MS = 15 * 1000;
 
 const views = {};
 const feeds = {};
@@ -369,7 +369,7 @@ async function refreshMomentumView({ momentumView }) {
   if (failed === 0) {
     momentumView.setStatus(`Actualizado ${new Date().toLocaleTimeString()} · incluye la vela en curso`);
   } else {
-    momentumView.setStatus(`${failed} activo(s) no se pudieron cargar — reintentando en 60 s`, true);
+    momentumView.setStatus(`${failed} activo(s) no se pudieron cargar — reintentando en 15 s`, true);
   }
 }
 
