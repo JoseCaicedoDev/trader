@@ -102,9 +102,9 @@ function readMomentum({ rsi, macd }) {
   const zone = rsiZone(rsi[last]);
   const macdDirection = hist >= 0 ? 'up' : 'down';
 
-  // Last 6 bars of the MACD histogram, from oldest (offset 5) to current forming candle (offset 0).
+  // Last 7 bars of the MACD histogram, from oldest (offset 6) to current forming candle (offset 0).
   const macdBars = [];
-  const barCount = 6;
+  const barCount = 7;
   const startIdx = Math.max(1, last - barCount + 1);
   for (let idx = startIdx; idx <= last; idx++) {
     const h = macd.histogram[idx];

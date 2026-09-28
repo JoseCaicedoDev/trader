@@ -82,6 +82,7 @@ const STRATEGIES_CONFIG = [
 // HYPE reads the USDⓈ-M perpetual: its spot listing is too new for weekly/daily history.
 const MOMENTUM_ASSETS = [
   { symbol: 'BTCUSDT', label: 'BTC', decimals: 1, priceDecimals: 0, market: 'spot' },
+  { symbol: 'ETHUSDT', label: 'ETH', decimals: 2, priceDecimals: 2, market: 'spot' },
   { symbol: 'HYPEUSDT', label: 'HYPE', decimals: 3, priceDecimals: 2, market: 'futures', note: 'Futuros perpetuos (Binance)' },
   { symbol: 'SOLUSDT', label: 'SOL', decimals: 2, priceDecimals: 2, market: 'spot' },
   { symbol: 'XRPUSDT', label: 'XRP', decimals: 5, priceDecimals: 4, market: 'spot' }
