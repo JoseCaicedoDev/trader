@@ -91,9 +91,9 @@ const MOMENTUM_TIMEFRAMES = [
   { interval: '15m', label: '15 min' },
   { interval: '1h', label: '1 H' },
   { interval: '2h', label: '2 H' },
-  { interval: '4h', label: '4 H' },
-  { interval: '12h', label: '12 H' },
-  { interval: '1d', label: '1 D' },
+  { interval: '4h', label: '4 H', divergence: true },
+  { interval: '12h', label: '12 H', divergence: true },
+  { interval: '1d', label: '1 D', divergence: true },
   { interval: '1w', label: '1 S' }
 ];
 const MOMENTUM_REFRESH_MS = 15 * 1000;
@@ -379,7 +379,7 @@ async function refreshMomentumAsset(momentumView, asset) {
   try {
     const entries = await Promise.all(MOMENTUM_TIMEFRAMES.map(async tf => {
       const raw = await fetchKlines(asset.symbol, tf.interval, 500);
-      return [tf.interval, buildMomentumSnapshot(raw)];
+      return [tf.interval, buildMomentumSnapshot(raw, tf.divergence)];
     }));
     momentumView.updateAsset(asset.symbol, Object.fromEntries(entries));
   } catch (error) {
@@ -389,11 +389,24 @@ async function refreshMomentumAsset(momentumView, asset) {
   }
 }
 
-function buildMomentumSnapshot(rawKlines) {
-  const candles = rawKlines.map(k => ({ time: Math.floor(k[0] / 1000), close: parseFloat(k[4]) }));
+// Divergences are read on closed candles only (the forming one is dropped), so a mark doesn't
+// flicker in and out while the current candle is still moving.
+function buildMomentumSnapshot(rawKlines, withDivergence = false) {
+  const candles = rawKlines.map(k => ({
+    time: Math.floor(k[0] / 1000),
+    high: parseFloat(k[2]),
+    low: parseFloat(k[3]),
+    close: parseFloat(k[4])
+  }));
+  const rsi = calculateRSI(candles, 14);
+  const macd = calculateMACD(candles);
+  const closed = candles.length - 1;
   return {
-    rsi: calculateRSI(candles, 14),
-    macd: calculateMACD(candles),
-    lastClose: candles[candles.length - 1].close
+    rsi,
+    macd,
+    lastClose: candles[closed].close,
+    divergences: withDivergence
+      ? detectDivergences(candles.slice(0, closed), { RSI: rsi.slice(0, closed), MACD: macd.macd.slice(0, closed) })
+      : null
   };
 }

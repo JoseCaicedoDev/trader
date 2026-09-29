@@ -79,7 +79,7 @@ class MomentumView {
     }
     card.className = `${CSS_CLASSES.MOMENTUM_CARD} ${CSS_CLASSES[`MOMENTUM_CARD_TONE_${reading.confluence.toUpperCase()}`]}`;
     card.append(
-      buildCardHeader(tf.label, reading.macdBias),
+      buildCardHeader(tf.label, reading.macdBias, snapshot.divergences, asset.priceDecimals),
       buildRsiRow(reading.rsi, reading.rsiChange, reading.rsiZone),
       buildMacdRow('MACD', reading.macdBars, asset.decimals),
       buildNote(reading.macdNote)
@@ -193,10 +193,15 @@ function classifyMacdBar(hist, prevHist) {
   }
 }
 
-function buildCardHeader(label, badge) {
+// Divergence badges (4H/12H/1D only, and only when one is present) sit right next to the
+// timeframe label, so the card body keeps its usual layout.
+function buildCardHeader(label, badge, divergences, priceDecimals) {
   const row = buildTextEl('div', CSS_CLASSES.MOMENTUM_CARD_HEADER, '');
+  const titleGroup = buildTextEl('div', CSS_CLASSES.MOMENTUM_CARD_TITLE_GROUP, '');
+  titleGroup.append(buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_TITLE, label));
+  (divergences || []).forEach(div => titleGroup.append(buildDivergenceBadge(div, priceDecimals)));
   row.append(
-    buildTextEl('span', CSS_CLASSES.MOMENTUM_CARD_TITLE, label),
+    titleGroup,
     buildTextEl('span', CSS_CLASSES[`MOMENTUM_BADGE_${badge.tone.toUpperCase()}`], badge.text)
   );
   return row;
@@ -240,6 +245,23 @@ function buildMacdDots(bars, decimals) {
     container.appendChild(dot);
   });
   return container;
+}
+
+function buildDivergenceBadge(div, priceDecimals) {
+  const bullish = div.type === 'bullish';
+  const badge = buildTextEl(
+    'span',
+    CSS_CLASSES[bullish ? 'MOMENTUM_DIV_BADGE_UP' : 'MOMENTUM_DIV_BADGE_DOWN'],
+    `${bullish ? '▲' : '▼'} ${div.indicators.join('+')}`
+  );
+  const swing = bullish ? 'mínimo más bajo' : 'máximo más alto';
+  const osc = bullish ? 'mínimo más alto' : 'máximo más bajo';
+  badge.title = `Divergencia ${bullish ? 'alcista' : 'bajista'}: el precio hizo un ${swing} ` +
+    `(${formatPrice(div.from.price, priceDecimals)} el ${formatDate(div.from.time)} → ` +
+    `${formatPrice(div.to.price, priceDecimals)} el ${formatDate(div.to.time)}) ` +
+    `mientras ${div.indicators.join(' y ')} hizo un ${osc}. ` +
+    `Swing confirmado hace ${div.barsAgo + 1} vela${div.barsAgo ? 's' : ''} cerrada${div.barsAgo ? 's' : ''}.`;
+  return badge;
 }
 
 function buildNote(text) {

@@ -215,3 +215,40 @@ function calculateMACD(data, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9)
   const histogram = macd.map((m, i) => (m === null || signal[i] === null ? null : m - signal[i]));
   return { macd, signal, histogram };
 }
+
+// Regular divergences between price and one or more oscillators, read off the last two confirmed
+// price swings (detectSwingLevels pivots, so only closed candles count — pass data without the
+// forming candle). Bullish: price makes a lower low while the oscillator makes a higher low.
+// Bearish: price makes a higher high while the oscillator makes a lower high. Only reported
+// when the latest swing is recent (≤ maxAge candles) and the two swings are minGap–maxGap apart.
+// `oscillators` is { name: valuesArray } aligned with `data`. Returns
+// [{ type: 'bullish'|'bearish', indicators: [names], from: {time, price}, to: {time, price}, barsAgo }].
+function detectDivergences(data, oscillators, { pivotBars = 3, minGap = 5, maxGap = 60, maxAge = 10 } = {}) {
+  const { pivotLows, pivotHighs } = detectSwingLevels(data, pivotBars);
+  const last = data.length - 1;
+  const read = (pivots, type, priceBroke, oscBroke) => {
+    if (pivots.length < 2) return null;
+    const p1 = pivots[pivots.length - 2].confirmedAt - pivotBars;
+    const p2 = pivots[pivots.length - 1].confirmedAt - pivotBars;
+    const gap = p2 - p1;
+    if (gap < minGap || gap > maxGap || last - p2 > maxAge) return null;
+    const price1 = pivots[pivots.length - 2].price, price2 = pivots[pivots.length - 1].price;
+    if (!priceBroke(price2, price1)) return null;
+    const indicators = Object.keys(oscillators).filter(name => {
+      const a = oscillators[name][p1], b = oscillators[name][p2];
+      return a != null && b != null && oscBroke(b, a);
+    });
+    if (!indicators.length) return null;
+    return {
+      type,
+      indicators,
+      from: { time: data[p1].time, price: price1 },
+      to: { time: data[p2].time, price: price2 },
+      barsAgo: last - p2
+    };
+  };
+  return [
+    read(pivotLows, 'bullish', (b, a) => b < a, (b, a) => b > a),
+    read(pivotHighs, 'bearish', (b, a) => b > a, (b, a) => b < a)
+  ].filter(Boolean);
+}

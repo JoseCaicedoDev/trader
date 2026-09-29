@@ -63,6 +63,7 @@ const CSS_CLASSES = Object.freeze({
   MOMENTUM_ASSET_CARDS: 'grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 sm:gap-3',
   MOMENTUM_ASSET_ERROR: 'text-xs text-neon-rose font-medium',
   MOMENTUM_CARD_HEADER: 'flex items-center justify-between gap-1.5 min-w-0',
+  MOMENTUM_CARD_TITLE_GROUP: 'flex items-center gap-1 sm:gap-1.5 min-w-0',
   MOMENTUM_CARD_TITLE: 'text-xs sm:text-sm font-bold text-white tracking-wide truncate',
   MOMENTUM_CARD_ROW: 'flex items-center justify-between gap-1 text-xs min-w-0',
   MOMENTUM_CARD_RSI_GROUP: 'flex items-center gap-1 sm:gap-1.5 min-w-0 shrink-0',
@@ -88,6 +89,9 @@ const CSS_CLASSES = Object.freeze({
   MOMENTUM_BADGE_UP: 'px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-neon-emerald/15 text-neon-emerald border border-neon-emerald/20 whitespace-nowrap shrink-0',
   MOMENTUM_BADGE_DOWN: 'px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-neon-rose/15 text-neon-rose border border-neon-rose/20 whitespace-nowrap shrink-0',
   MOMENTUM_BADGE_NEUTRAL: 'px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-white/5 text-gray-300 border border-white/10 whitespace-nowrap shrink-0',
+  // Divergence marks are brighter than the regular badges so they catch the eye on 4H/1D cards.
+  MOMENTUM_DIV_BADGE_UP: 'px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-neon-emerald/25 text-neon-emerald border border-neon-emerald/60 shadow-[0_0_8px_rgba(0,230,118,0.35)] whitespace-nowrap shrink-0 cursor-help animate-pulse',
+  MOMENTUM_DIV_BADGE_DOWN: 'px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-neon-rose/25 text-neon-rose border border-neon-rose/60 shadow-[0_0_8px_rgba(255,23,68,0.35)] whitespace-nowrap shrink-0 cursor-help animate-pulse',
   MOMENTUM_STATUS_OK: 'momentum-status text-[11px] sm:text-xs text-gray-500 font-medium',
   MOMENTUM_STATUS_ERROR: 'momentum-status text-[11px] sm:text-xs text-neon-rose font-medium',
 
