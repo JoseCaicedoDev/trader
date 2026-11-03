@@ -192,18 +192,19 @@ const STRATEGY4_PARAMS = {
   counterOnTP: true, counterRrRatio: 0.60
 };
 
-// RSI zones (BTC/USDT 4h, runRsiZoneStrategy): LONG on the cross up into overbought, close on the
-// cross down into oversold — the rule exactly as requested, NOT tuned or validated like the tabs above.
+// RSI zones (BTC/USDT 4h, runRsiZoneStrategy): LONG on the cross down into oversold, close on the
+// cross up into overbought — the rule exactly as requested, NOT tuned or validated like the tabs above.
 // The analysed window is always the trailing 365 days at page load; RSI_HISTORY_START adds 30 days of
 // warm-up before it so Wilder's smoothing has settled by the time the first signal can trade.
 //
 // Measured at creation (2026-11-03, 0.1%/side fees), one year per window, not overlapping:
-//   2025-11..2026-11   6 trades, 3 winners, +6.79%, DD 21.4%, PF 1.34  (buy & hold -27.3%)
-//   2024-11..2025-11  12 trades, 4 winners, -3.99%, DD 35.2%, PF 0.93  (buy & hold +54.4%)
-//   2023-11..2024-11  11 trades, 5 winners, +19.91%, DD 36.2%, PF 1.27 (buy & hold +95.0%)
-//   2022-11..2023-11  11 trades, 3 winners, +48.17%, DD 30.5%, PF 1.33 (buy & hold +63.5%)
-//   2021-11..2022-11  11 trades, 1 winner, -48.67%, DD 53.9%, PF 0.05  (buy & hold -66.0%)
-// Low hit rate in every window; whatever it earns comes from a few long trends caught whole.
+//   2025-11..2026-11   6 closed (+1 open), 3 winners, -31.09%, DD 42.2%, PF 0.27 (buy & hold -27.3%)
+//   2024-11..2025-11  11 closed (+1 open), 9 winners, +42.31%, DD 25.1%, PF 5.61 (buy & hold +54.4%)
+//   2023-11..2024-11  11 closed, 7 winners, +50.33%, DD 24.2%, PF 5.60 (buy & hold +95.0%)
+//   2022-11..2023-11  12 closed, 9 winners, +13.92%, DD 20.7%, PF 1.72 (buy & hold +63.5%)
+//   2021-11..2022-11  11 closed, 6 winners, -39.65%, DD 62.7%, PF 0.46 (buy & hold -66.0%)
+// No stop: in a falling market an oversold entry can keep sliding for weeks before RSI ever reaches
+// 70, which is where both losing years come from. It never beat buy & hold in a rising year either.
 const RSI_ANALYSIS_DAYS = 365;
 const RSI_STRATEGY_PARAMS = {
   rsiPeriod: 14, overbought: 70, oversold: 30,

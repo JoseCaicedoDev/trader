@@ -45,7 +45,7 @@ const STRATEGIES_CONFIG = [
     emaSlowLabel: STRATEGY4_PARAMS.emaSlow
   },
   {
-    // LONG on the RSI cross into overbought, sell on the cross into oversold, over the trailing year.
+    // LONG on the RSI cross into oversold, sell on the cross into overbought, over the trailing year.
     key: 'rsi',
     title: 'RSI 70/30 — BTC 4h',
     symbol: 'BTCUSDT',
@@ -332,7 +332,7 @@ function setupLiveFeed(symbol, timeframe, configKeys) {
           const eventType = view.config.strategyType === 'wyckoff'
             ? res.currentState.lastEvent
             : view.config.strategyType === 'rsi'
-              ? (res.currentState.signal === 'BUY' ? EVENT_LABELS.RSI_OVERBOUGHT : EVENT_LABELS.RSI_OVERSOLD)
+              ? (res.currentState.signal === 'BUY' ? EVENT_LABELS.RSI_OVERSOLD : EVENT_LABELS.RSI_OVERBOUGHT)
               : (res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
           checkAndTriggerAlert(symbol, key, res.currentState.price, res.currentState.signal, kline.time, eventType);
         }

@@ -1,12 +1,10 @@
 // Strategy: RSI zones (BTC/USDT 4h). Long only, no stop and no target.
 //
-// Opens a LONG on the candle where RSI crosses UP into overbought (> overbought) and closes it on
-// the candle where RSI crosses DOWN into oversold (< oversold). This is the rule as the user asked for
-// it: enter on overbought, sell what was bought on oversold. It reads overbought as momentum, not as a
-// reversal warning, so it is the opposite of the textbook "buy oversold / sell overbought" use of RSI.
+// Opens a LONG on the candle where RSI crosses DOWN into oversold (< oversold) and closes it on the
+// candle where RSI crosses UP into overbought (> overbought): the classic mean-reversion use of RSI.
 //
-// A position therefore lives from one overbought cross until the next oversold cross. Further
-// overbought crosses while long are ignored (the simulator does not pyramid). Only crosses at or after
+// A position therefore lives from one oversold cross until the next overbought cross. Further
+// oversold crosses while long are ignored (the simulator does not pyramid). Only crosses at or after
 // `params.analysisStart` (ms) trade; candles before it exist solely to warm up RSI's smoothing.
 //
 // Besides the backtest, `rsiStats` counts how often each zone was reached in the analysed window, so
@@ -32,14 +30,14 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     if (rsi[i] < oversold) candlesOversold++;
     if (rsi[i - 1] === null) continue;
 
-    if (rsi[i - 1] <= overbought && rsi[i] > overbought) {
-      overboughtEvents++;
-      signals[i] = 'BUY';
-      labels[i] = 'RSI_OVERBOUGHT';
-    } else if (rsi[i - 1] >= oversold && rsi[i] < oversold) {
+    if (rsi[i - 1] >= oversold && rsi[i] < oversold) {
       oversoldEvents++;
-      signals[i] = 'EXIT_LONG_MOMENTUM';
+      signals[i] = 'BUY';
       labels[i] = 'RSI_OVERSOLD';
+    } else if (rsi[i - 1] <= overbought && rsi[i] > overbought) {
+      overboughtEvents++;
+      signals[i] = 'EXIT_LONG_MOMENTUM';
+      labels[i] = 'RSI_OVERBOUGHT';
     }
   }
 
