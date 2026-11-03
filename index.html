@@ -280,7 +280,7 @@
         </div>
 
         <!-- Tab Panel: Price Chart -->
-        <section data-tab-panel="chart" class="glass-card rounded-xl p-3 sm:p-4 lg:p-6 grid grid-rows-[auto_1fr] gap-4 lg:gap-5 min-h-0">
+        <section data-tab-panel="chart" class="glass-card rounded-xl p-3 sm:p-4 lg:p-6 grid grid-rows-[auto_1fr_auto] gap-4 lg:gap-5 min-h-0">
           <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-4">
             <div class="flex items-center gap-2.5">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="main-chart-icon"><path d="M9 5v4"/><rect width="4" height="10" x="7" y="9" rx="1"/><path d="M9 19v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v8"/><path d="M3 3v18h18"/></svg>
@@ -305,6 +305,12 @@
               <div class="overlay-spinner w-10 h-10 border-3 border-neon-cyan/10 rounded-full animate-spin"></div>
               <p class="overlay-message text-sm text-gray-400 font-medium tracking-wide">Conectando...</p>
             </div>
+          </div>
+
+          <!-- Lower indicator chart (RSI), time-synced with the price chart. Shown only for the RSI view. -->
+          <div class="lower-chart-wrap hidden grid gap-1.5">
+            <span class="lower-chart-title text-xs font-semibold text-gray-400">RSI (14) · sobreventa &lt; 30 · sobrecompra &gt; 70</span>
+            <div class="lower-chart relative w-full h-[24dvh] min-h-[170px] bg-black/50 rounded-lg overflow-hidden border border-white/5"></div>
           </div>
         </section>
 

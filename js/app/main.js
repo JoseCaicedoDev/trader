@@ -132,6 +132,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       root.querySelector('.rsi-analysis').classList.remove('hidden');
       root.querySelector('.chk-vwap-row').classList.add('hidden');
       root.querySelector('.chk-ema-row').classList.add('hidden');
+      root.querySelector('.lower-chart-wrap').classList.remove('hidden');
+      // The price chart normally fills the panel on desktop; share the height with the RSI chart.
+      root.querySelector('.main-chart').classList.replace('lg:h-full', 'lg:h-[46dvh]');
+      root.querySelector('.lower-chart').classList.add('lg:h-[22dvh]');
+      // Stack the rows from the top: a stretched middle row would push the RSI chart to the bottom
+      // of a panel that grows with the (taller) sidebar, i.e. off screen.
+      const chartPanel = root.querySelector('section[data-tab-panel="chart"]');
+      chartPanel.classList.replace('grid-rows-[auto_1fr_auto]', 'grid-rows-[auto_auto_auto]');
+      chartPanel.classList.add('content-start');
     }
 
 
@@ -159,7 +168,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       domRoot.querySelector('.main-chart'),
       domRoot.querySelector('.equity-chart'),
       config.accentColor === 'cyan' ? '#00e5ff' : '#b388ff',
-      EVENT_LABELS
+      EVENT_LABELS,
+      config.showRsi ? domRoot.querySelector('.lower-chart') : null
     );
 
     const metricsPanel = new MetricsPanel(domRoot);
