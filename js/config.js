@@ -191,3 +191,22 @@ const STRATEGY4_PARAMS = {
   // 0.495R target used by the main strategy.
   counterOnTP: true, counterRrRatio: 0.60
 };
+
+// RSI zones (BTC/USDT 4h, runRsiZoneStrategy): LONG on the cross up into overbought, close on the
+// cross down into oversold — the rule exactly as requested, NOT tuned or validated like the tabs above.
+// The analysed window is always the trailing 365 days at page load; RSI_HISTORY_START adds 30 days of
+// warm-up before it so Wilder's smoothing has settled by the time the first signal can trade.
+//
+// Measured at creation (2026-11-03, 0.1%/side fees), one year per window, not overlapping:
+//   2025-11..2026-11   6 trades, 3 winners, +6.79%, DD 21.4%, PF 1.34  (buy & hold -27.3%)
+//   2024-11..2025-11  12 trades, 4 winners, -3.99%, DD 35.2%, PF 0.93  (buy & hold +54.4%)
+//   2023-11..2024-11  11 trades, 5 winners, +19.91%, DD 36.2%, PF 1.27 (buy & hold +95.0%)
+//   2022-11..2023-11  11 trades, 3 winners, +48.17%, DD 30.5%, PF 1.33 (buy & hold +63.5%)
+//   2021-11..2022-11  11 trades, 1 winner, -48.67%, DD 53.9%, PF 0.05  (buy & hold -66.0%)
+// Low hit rate in every window; whatever it earns comes from a few long trends caught whole.
+const RSI_ANALYSIS_DAYS = 365;
+const RSI_STRATEGY_PARAMS = {
+  rsiPeriod: 14, overbought: 70, oversold: 30,
+  analysisStart: Date.now() - RSI_ANALYSIS_DAYS * 86400000
+};
+const RSI_HISTORY_START = RSI_STRATEGY_PARAMS.analysisStart - 30 * 86400000;

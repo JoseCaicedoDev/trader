@@ -16,7 +16,9 @@ const EVENT_LABELS = Object.freeze({
   TAKE_PROFIT: 'Take Profit',
   COUNTER_ON_TP: 'Contraria tras TP',
   EMA_CROSS_UP: 'Cruce Alcista EMA',
-  EMA_CROSS_DOWN: 'Cruce Bajista EMA'
+  EMA_CROSS_DOWN: 'Cruce Bajista EMA',
+  RSI_OVERBOUGHT: 'Sobrecompra RSI',
+  RSI_OVERSOLD: 'Sobreventa RSI'
 });
 
 const CSS_CLASSES = Object.freeze({

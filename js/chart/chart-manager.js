@@ -93,15 +93,31 @@ class ChartManager {
 
     this.candlestickSeries.setData(candles);
 
-    // 2. Draw Dynamic Indicators (VWAP, EMAs, Ranges)
+    // 2. Draw Dynamic Indicators (VWAP, EMAs, Ranges). An indicator with its own `priceScaleId`
+    // (e.g. RSI, 0-100) is drawn in a strip under the candles instead of on the price scale.
     if (results.indicators && results.indicators.length > 0) {
+      const hasLowerPane = results.indicators.some(ind => ind.priceScaleId);
+      if (hasLowerPane) {
+        this.candlestickSeries.priceScale().applyOptions({ scaleMargins: { top: 0.05, bottom: 0.3 } });
+      }
       results.indicators.forEach(ind => {
         const series = this.priceChart.addLineSeries({
           color: ind.color,
           lineWidth: 1.5,
           lineStyle: ind.style || 0,
-          title: ind.name
+          title: ind.name,
+          ...(ind.priceScaleId ? {
+            priceScaleId: ind.priceScaleId,
+            autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
+          } : {})
         });
+        if (ind.priceScaleId) {
+          series.priceScale().applyOptions({ scaleMargins: { top: 0.75, bottom: 0.02 } });
+          (ind.levels || []).forEach(level => series.createPriceLine({
+            price: level, color: 'rgba(255, 255, 255, 0.35)', lineWidth: 1, lineStyle: 2,
+            axisLabelVisible: true, title: ''
+          }));
+        }
 
         const indData = candles.map((c, idx) => ({
           time: c.time,

@@ -52,8 +52,12 @@ class SignalPanel {
    */
   update(state) {
     if (!state) return;
-    this.updateVwapCheck(state);
-    this.updateEmaCheck(state);
+    if ('rsi' in state) {
+      this.updateRsiCheck(state);
+    } else {
+      this.updateVwapCheck(state);
+      this.updateEmaCheck(state);
+    }
     if ('lastEvent' in state) this.updateWyckoffExtras(state);
     this.updatePositionCheck(state);
   }
@@ -83,6 +87,29 @@ class SignalPanel {
     const comparator = state.bullishStructure ? '>' : '<';
     const trend = state.bullishStructure ? 'alcista' : 'bajista';
     this.emaText.textContent = `EMA${this.emaFastLabel} ${comparator} EMA${this.emaSlowLabel} (${trend})`;
+  }
+
+  /** Renders the RSI zone row (only called for RSI-shaped state). */
+  updateRsiCheck(state) {
+    const dot = this.viewRoot.querySelector('.chk-rsi-dot');
+    const text = this.viewRoot.querySelector('.chk-rsi-text');
+    if (!dot || !text) return;
+    if (state.rsi === null) {
+      dot.className = CSS_CLASSES.DOT_NEUTRAL;
+      text.textContent = 'Calculando...';
+      return;
+    }
+    const value = state.rsi.toFixed(1);
+    if (state.rsi > state.overbought) {
+      dot.className = CSS_CLASSES.DOT_OK;
+      text.textContent = `${value} — Sobrecompra (> ${state.overbought})`;
+    } else if (state.rsi < state.oversold) {
+      dot.className = CSS_CLASSES.DOT_BAD;
+      text.textContent = `${value} — Sobreventa (< ${state.oversold})`;
+    } else {
+      dot.className = CSS_CLASSES.DOT_NEUTRAL;
+      text.textContent = `${value} — Zona neutral`;
+    }
   }
 
   /** Renders the Wyckoff event badge + Stochastic RSI row (only called for Wyckoff-shaped state). */

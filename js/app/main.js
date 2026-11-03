@@ -23,22 +23,7 @@ const STRATEGIES_CONFIG = [
     description: null
   },
   {
-    key: 'emacross',
-    title: 'VWAP + Cruce EMA 24/30',
-    symbol: 'BTCUSDT',
-    timeframe: '4h',
-    accentColor: 'purple',
-    iconSvg: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
-    isEthTimeframe: false,
-    strategyType: 'emacross',
-    strategyParams: STRATEGY2_PARAMS,
-    runStrategy: runEmaCrossStrategy,
-    showStochastic: false,
-    emaFastLabel: STRATEGY2_PARAMS.emaFast,
-    emaSlowLabel: STRATEGY2_PARAMS.emaSlow
-  },
-  {
-    // Same engine as 'emacross' on the 2h timeframe, but with its own EMA pair (12/60, not 24/30),
+    // VWAP + EMA-cross engine on the 2h timeframe with its own EMA pair (12/60),
     // its own calibration and re-entry enabled — a separate view whose purpose is trade frequency,
     // not better risk. See the STRATEGY4_PARAMS comment in config.js before reading into its metrics.
     key: 'emacross2h',
@@ -60,19 +45,20 @@ const STRATEGIES_CONFIG = [
     emaSlowLabel: STRATEGY4_PARAMS.emaSlow
   },
   {
-    key: 'eth',
-    title: 'VWAP + EMA — ETH/USDT',
-    symbol: 'ETHUSDT',
+    // LONG on the RSI cross into overbought, sell on the cross into oversold, over the trailing year.
+    key: 'rsi',
+    title: 'RSI 70/30 — BTC 4h',
+    symbol: 'BTCUSDT',
     timeframe: '4h',
     accentColor: 'purple',
-    iconSvg: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
-    isEthTimeframe: true,
-    strategyType: 'emacross',
-    strategyParams: STRATEGY3_PARAMS,
-    runStrategy: runEmaCrossStrategy,
+    iconSvg: '<path d="M3 7h18"/><path d="M3 17h18"/><path d="m3 14 4-6 4 5 4-7 6 9"/>',
+    isEthTimeframe: false,
+    strategyType: 'rsi',
+    strategyParams: RSI_STRATEGY_PARAMS,
+    runStrategy: runRsiZoneStrategy,
     showStochastic: false,
-    emaFastLabel: STRATEGY3_PARAMS.emaFast,
-    emaSlowLabel: STRATEGY3_PARAMS.emaSlow
+    showRsi: true,
+    historyStart: RSI_HISTORY_START
   }
 ];
 
@@ -140,6 +126,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (config.showStochastic) {
       root.querySelector('.chk-stoch-row').classList.remove('hidden');
       root.querySelector('.signal-event-badge').classList.remove('hidden');
+    }
+    if (config.showRsi) {
+      root.querySelector('.chk-rsi-row').classList.remove('hidden');
+      root.querySelector('.rsi-analysis').classList.remove('hidden');
+      root.querySelector('.chk-vwap-row').classList.add('hidden');
+      root.querySelector('.chk-ema-row').classList.add('hidden');
     }
 
 
@@ -215,10 +207,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   await Promise.all(STRATEGIES_CONFIG.map(config => runBacktestFlow(config.key)));
 
   // 5. Connect WebSocket Feeds. One feed per (symbol, timeframe) pair — views that share both share
-  // a socket, so the two BTC 4h strategies stay on a single stream while BTC 2h gets its own.
-  setupLiveFeed('BTCUSDT', '4h', ['wyckoff', 'emacross']);
+  // a socket.
+  setupLiveFeed('BTCUSDT', '4h', ['wyckoff', 'rsi']);
   setupLiveFeed('BTCUSDT', '2h', ['emacross2h']);
-  setupLiveFeed('ETHUSDT', '4h', ['eth']);
 });
 
 // Generic Backtest Flow Runner
@@ -255,6 +246,7 @@ async function runBacktestFlow(key) {
     view.metricsPanel.update(res, INITIAL_CAPITAL);
     view.tradesTable.render(res.trades, res.eventLabels);
     view.signalPanel.update(res.currentState);
+    if (res.rsiStats) renderRsiAnalysis(view.root, res.rsiStats);
 
     view.metricsPanel.setLoading(false);
   } catch (error) {
@@ -264,6 +256,28 @@ async function runBacktestFlow(key) {
   } finally {
     view.isRunning = false;
   }
+}
+
+// Fills the RSI view's "last year" card: how often each zone was reached and how the trades closed.
+function renderRsiAnalysis(root, s) {
+  const fmtDate = t => new Date(t * 1000).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' });
+  const pct = v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+  const colored = v => `<span class="${v >= 0 ? 'text-neon-emerald' : 'text-neon-rose'} font-semibold">${pct(v)}</span>`;
+  const closed = s.winners + s.losers;
+
+  root.querySelector('.rsi-range').textContent = s.from
+    ? `${fmtDate(s.from)} → ${fmtDate(s.to)} · ${s.candles} velas de 4h`
+    : 'Sin datos suficientes';
+  root.querySelector('.rsi-ob-count').textContent = s.overboughtEvents;
+  root.querySelector('.rsi-ob-pct').textContent = `veces · ${s.pctOverbought.toFixed(1)}% del tiempo`;
+  root.querySelector('.rsi-os-count').textContent = s.oversoldEvents;
+  root.querySelector('.rsi-os-pct').textContent = `veces · ${s.pctOversold.toFixed(1)}% del tiempo`;
+  root.querySelector('.rsi-trade-summary').innerHTML = closed === 0
+    ? 'Ninguna operación cerrada en el periodo.'
+    : `<span class="text-white font-semibold">${s.winners} de ${closed}</span> operaciones cerradas en positivo<br>` +
+      `Ganancia media ${colored(s.avgWinPct)} · Pérdida media ${colored(s.avgLossPct)}<br>` +
+      `Mejor ${colored(s.bestPct)} · Peor ${colored(s.worstPct)}<br>` +
+      `Comprar y mantener BTC en el mismo periodo: ${colored(s.buyHoldPct)}`;
 }
 
 // Live WebSocket feed manager
@@ -317,7 +331,9 @@ function setupLiveFeed(symbol, timeframe, configKeys) {
         if (res.currentState.signal) {
           const eventType = view.config.strategyType === 'wyckoff'
             ? res.currentState.lastEvent
-            : (res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
+            : view.config.strategyType === 'rsi'
+              ? (res.currentState.signal === 'BUY' ? EVENT_LABELS.RSI_OVERBOUGHT : EVENT_LABELS.RSI_OVERSOLD)
+              : (res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
           checkAndTriggerAlert(symbol, key, res.currentState.price, res.currentState.signal, kline.time, eventType);
         }
       }

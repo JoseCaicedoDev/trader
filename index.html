@@ -70,17 +70,13 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
         Wyckoff Unificado
       </button>
-      <button type="button" data-strategy="emacross" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors shrink-0 whitespace-nowrap snap-start">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-        VWAP + Cruce EMA 24/30
-      </button>
       <button type="button" data-strategy="emacross2h" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors shrink-0 whitespace-nowrap snap-start">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         VWAP + Cruce EMA 12/60 — 2h
       </button>
-      <button type="button" data-strategy="eth" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors shrink-0 whitespace-nowrap snap-start">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-        VWAP + EMA — ETH/USDT
+      <button type="button" data-strategy="rsi" class="strategy-tab-btn flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-white/5 text-gray-400 border border-white/8 hover:text-gray-200 transition-colors shrink-0 whitespace-nowrap snap-start">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18"/><path d="M3 17h18"/><path d="m3 14 4-6 4 5 4-7 6 9"/></svg>
+        RSI 70/30 — 4h
       </button>
       <button type="button" data-strategy="momentum" class="strategy-tab-btn active-strategy-tab flex items-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 transition-colors shrink-0 whitespace-nowrap snap-start">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -152,11 +148,16 @@
           </div>
           <span class="signal-event-badge text-xs font-semibold px-2.5 py-1 rounded-full bg-white/5 text-gray-400 border border-white/8 w-fit hidden">Sin evento Wyckoff activo</span>
           <div class="grid grid-cols-1 gap-2 text-xs">
-            <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <!-- RSI Row (Shown only for the RSI zones view) -->
+            <div class="chk-rsi-row flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5 hidden">
+              <span class="chk-rsi-dot w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
+              <span class="text-gray-400">RSI: <span class="chk-rsi-text text-gray-300 font-medium">—</span></span>
+            </div>
+            <div class="chk-vwap-row flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
               <span class="chk-vwap-dot w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
               <span class="text-gray-400">VWAP: <span class="chk-vwap-text text-gray-300 font-medium">—</span></span>
             </div>
-            <div class="flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
+            <div class="chk-ema-row flex items-center gap-2 bg-black/30 rounded-lg p-2.5 border border-white/5">
               <span class="chk-ema-dot w-2 h-2 rounded-full inline-block bg-gray-600 shrink-0"></span>
               <span class="text-gray-400">Estructura: <span class="chk-ema-text text-gray-300 font-medium">—</span></span>
             </div>
@@ -176,6 +177,28 @@
             <span>Take Profit: <span class="pos-tp text-neon-emerald">-</span></span>
             <span>P&L flotante: <span class="pos-pnl text-gray-200">-</span></span>
           </div>
+        </section>
+
+        <!-- RSI zone analysis over the trailing year (Shown only for the RSI zones view) -->
+        <section class="rsi-analysis glass-card rounded-xl p-4 flex flex-col gap-3 hidden">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple"><path d="M3 7h18"/><path d="M3 17h18"/><path d="m3 14 4-6 4 5 4-7 6 9"/></svg>
+            <h2 class="text-xs font-bold tracking-tight text-white uppercase">Análisis último año</h2>
+          </div>
+          <span class="rsi-range text-[11px] text-gray-500 font-medium">—</span>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-black/30 rounded-lg p-2.5 border border-white/5 flex flex-col gap-0.5">
+              <span class="text-gray-400">Sobrecompras (&gt;70)</span>
+              <span class="rsi-ob-count text-lg font-bold tabular-nums text-neon-emerald">—</span>
+              <span class="rsi-ob-pct text-[11px] text-gray-500">—</span>
+            </div>
+            <div class="bg-black/30 rounded-lg p-2.5 border border-white/5 flex flex-col gap-0.5">
+              <span class="text-gray-400">Sobreventas (&lt;30)</span>
+              <span class="rsi-os-count text-lg font-bold tabular-nums text-neon-rose">—</span>
+              <span class="rsi-os-pct text-[11px] text-gray-500">—</span>
+            </div>
+          </div>
+          <div class="rsi-trade-summary text-xs leading-5 text-gray-400 bg-black/30 rounded-lg p-3 border border-white/5">—</div>
         </section>
 
         <!-- Metrics Summaries -->
@@ -344,6 +367,7 @@
   <script src="js/simulator.js"></script>
   <script src="js/strategy-wyckoff.js"></script>
   <script src="js/strategy-emacross.js"></script>
+  <script src="js/strategy-rsi.js"></script>
   <script src="js/binance-api.js"></script>
   
   <!-- Layer 3 DOM Utilities -->
