@@ -262,3 +262,10 @@ Registro cronológico y persistente de todas las operaciones realizadas sobre la
 - Documentada estrategia osciladora en [rsi_reversion_media.md](file:///c:/Users/gira/Desktop/backtesting/wiki/rsi_reversion_media.md) con pruebas de parámetros.
 - Documentada estrategia de momentum en [macd_crossover.md](file:///c:/Users/gira/Desktop/backtesting/wiki/macd_crossover.md).
 - Documentada estrategia de volatilidad y reversión en [bandas_de_bollinger.md](file:///c:/Users/gira/Desktop/backtesting/wiki/bandas_de_bollinger.md).
+## [2026-11-03] ingest | Evaluación RSI long BTC/USDT 4h
+
+- Comparadas diez hipótesis sobre 19.352 velas Binance con desarrollo 2019–2024 y evaluación 2025–2026; guardados datos, script reproducible y resultados en `analysis/`.
+- Verificadas paridad con el saldo de producción, ejecución a siguiente apertura y ejecución de stop con salto de precio.
+- Creado [análisis RSI long 4h](file:///c:/Users/gira/Desktop/backtesting/wiki/analisis_rsi_long_4h.md), enlazado desde índice y estrategia conceptual. Registrada divergencia entre wiki y código.
+- Ninguna variante recomendada como ganadora robusta; sin cambios de producción.
+

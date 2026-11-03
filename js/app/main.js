@@ -45,9 +45,9 @@ const STRATEGIES_CONFIG = [
     emaSlowLabel: STRATEGY4_PARAMS.emaSlow
   },
   {
-    // LONG on the RSI cross into oversold, sell on the cross into overbought, over the trailing year.
+    // LONG on RSI dips below 25 inside a rising VWAP(1000) trend; exit selectable in the tab.
     key: 'rsi',
-    title: 'RSI 70/30 — BTC 4h',
+    title: 'RSI + VWAP — BTC 4h',
     symbol: 'BTCUSDT',
     timeframe: '4h',
     accentColor: 'purple',
@@ -130,7 +130,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (config.showRsi) {
       root.querySelector('.chk-rsi-row').classList.remove('hidden');
       root.querySelector('.rsi-analysis').classList.remove('hidden');
-      root.querySelector('.chk-vwap-row').classList.add('hidden');
       root.querySelector('.chk-ema-row').classList.add('hidden');
       root.querySelector('.lower-chart-wrap').classList.remove('hidden');
       // The price chart normally fills the panel on desktop; share the height with the RSI chart.
@@ -197,6 +196,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     };
   });
 
+  if (views.rsi) initRsiExitSelector(views.rsi);
+
   // 2. Initialize top-level strategy views switcher
   const switcherMap = {};
   Object.keys(views).forEach(k => {
@@ -251,12 +252,7 @@ async function runBacktestFlow(key) {
     candles.sort((a, b) => a.time - b.time);
     view.lastCandles = candles;
 
-    const res = view.config.runStrategy(candles, view.config.strategyParams, INITIAL_CAPITAL, FEE_PERCENT);
-    view.chartManager.render(candles, res);
-    view.metricsPanel.update(res, INITIAL_CAPITAL);
-    view.tradesTable.render(res.trades, res.eventLabels);
-    view.signalPanel.update(res.currentState);
-    if (res.rsiStats) renderRsiAnalysis(view.root, res.rsiStats);
+    renderBacktest(view, candles);
 
     view.metricsPanel.setLoading(false);
   } catch (error) {
@@ -266,6 +262,53 @@ async function runBacktestFlow(key) {
   } finally {
     view.isRunning = false;
   }
+}
+
+// Exit-rule switch on the RSI view. The choice is remembered per browser and re-runs the backtest on
+// the candles already loaded, so switching does not hit the Binance API again.
+const RSI_EXIT_STORAGE_KEY = 'rsiExitMode';
+const RSI_EXIT_BTN_ACTIVE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-neon-purple/15 text-neon-purple border-neon-purple/40';
+const RSI_EXIT_BTN_IDLE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-white/5 text-gray-400 border-white/8 hover:text-gray-200';
+
+function initRsiExitSelector(view) {
+  try {
+    const saved = localStorage.getItem(RSI_EXIT_STORAGE_KEY);
+    if (saved === 'rsi' || saved === 'vwap') view.config.strategyParams.exitMode = saved;
+  } catch (e) { /* storage unavailable: keep the default */ }
+
+  const buttons = view.root.querySelectorAll('.rsi-exit-btn');
+  const paint = () => buttons.forEach(b => {
+    const active = b.dataset.exitMode === view.config.strategyParams.exitMode;
+    b.className = active ? RSI_EXIT_BTN_ACTIVE : RSI_EXIT_BTN_IDLE;
+    b.setAttribute('aria-checked', String(active));
+    b.setAttribute('role', 'radio');
+  });
+  paint();
+
+  buttons.forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.exitMode === view.config.strategyParams.exitMode) return;
+    view.config.strategyParams.exitMode = b.dataset.exitMode;
+    try { localStorage.setItem(RSI_EXIT_STORAGE_KEY, b.dataset.exitMode); } catch (e) { /* ignore */ }
+    paint();
+    if (view.lastCandles && !view.isRunning) renderBacktest(view, view.lastCandles);
+  }));
+}
+
+// Runs the strategy on already-loaded candles and refreshes every panel of the view.
+function renderBacktest(view, candles) {
+  const res = view.config.runStrategy(candles, view.config.strategyParams, INITIAL_CAPITAL, FEE_PERCENT);
+  view.chartManager.render(candles, res);
+  view.metricsPanel.update(res, INITIAL_CAPITAL);
+  view.tradesTable.render(res.trades, res.eventLabels);
+  view.signalPanel.update(res.currentState);
+  if (res.rsiStats) renderRsiAnalysis(view.root, res.rsiStats);
+  const lowerTitle = view.root.querySelector('.lower-chart-title');
+  if (lowerTitle && view.config.showRsi) {
+    const p = view.config.strategyParams;
+    lowerTitle.textContent = `RSI (${p.rsiPeriod}) · compra < ${p.entryLevel} · venta > ${p.exitMode === 'rsi' ? p.exitRsi : p.exitRsiCap}` +
+      (p.exitMode === 'vwap' ? ` o precio > VWAP${p.exitVwapPeriod}` : '');
+  }
+  return res;
 }
 
 // Fills the RSI view's "last year" card: how often each zone was reached and how the trades closed.
@@ -285,7 +328,7 @@ function renderRsiAnalysis(root, s) {
   root.querySelector('.rsi-trade-summary').innerHTML = closed === 0
     ? 'Ninguna operación cerrada en el periodo.'
     : `<span class="text-white font-semibold">${s.winners} de ${closed}</span> operaciones cerradas en positivo<br>` +
-      `Ganancia media ${colored(s.avgWinPct)} · Pérdida media ${colored(s.avgLossPct)}<br>` +
+      `Ganancia media ${s.winners ? colored(s.avgWinPct) : '—'} · Pérdida media ${s.losers ? colored(s.avgLossPct) : 'ninguna'}<br>` +
       `Mejor ${colored(s.bestPct)} · Peor ${colored(s.worstPct)}<br>` +
       `Comprar y mantener BTC en el mismo periodo: ${colored(s.buyHoldPct)}`;
 }
@@ -342,7 +385,7 @@ function setupLiveFeed(symbol, timeframe, configKeys) {
           const eventType = view.config.strategyType === 'wyckoff'
             ? res.currentState.lastEvent
             : view.config.strategyType === 'rsi'
-              ? (res.currentState.signal === 'BUY' ? EVENT_LABELS.RSI_OVERSOLD : EVENT_LABELS.RSI_OVERBOUGHT)
+              ? EVENT_LABELS.RSI_DIP_BUY
               : (res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
           checkAndTriggerAlert(symbol, key, res.currentState.price, res.currentState.signal, kline.time, eventType);
         }

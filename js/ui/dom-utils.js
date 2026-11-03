@@ -17,8 +17,9 @@ const EVENT_LABELS = Object.freeze({
   COUNTER_ON_TP: 'Contraria tras TP',
   EMA_CROSS_UP: 'Cruce Alcista EMA',
   EMA_CROSS_DOWN: 'Cruce Bajista EMA',
-  RSI_OVERBOUGHT: 'Sobrecompra RSI',
-  RSI_OVERSOLD: 'Sobreventa RSI'
+  RSI_DIP_BUY: 'RSI<25 en tendencia',
+  RSI_EXIT: 'Salida RSI',
+  VWAP_EXIT: 'Salida VWAP'
 });
 
 const CSS_CLASSES = Object.freeze({

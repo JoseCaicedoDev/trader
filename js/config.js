@@ -192,22 +192,29 @@ const STRATEGY4_PARAMS = {
   counterOnTP: true, counterRrRatio: 0.60
 };
 
-// RSI zones (BTC/USDT 4h, runRsiZoneStrategy): LONG on the cross down into oversold, close on the
-// cross up into overbought — the rule exactly as requested, NOT tuned or validated like the tabs above.
-// The analysed window is always the trailing 365 days at page load; RSI_HISTORY_START adds 30 days of
-// warm-up before it so Wilder's smoothing has settled by the time the first signal can trade.
+// RSI + VWAP (BTC/USDT 4h, runRsiZoneStrategy). Long only, no stop.
+//   Entry: RSI14 crosses below 25 while VWAP(1000) is above its value 30 candles earlier (rising trend).
+//   Exit 'rsi':  RSI crosses above 60.
+//   Exit 'vwap': close crosses above VWAP(100), or RSI crosses above 65, whichever comes first.
+// The tab lets the viewer switch exitMode; 'vwap' is the default.
 //
-// Measured at creation (2026-11-03, 0.1%/side fees), one year per window, not overlapping:
-//   2025-11..2026-11   6 closed (+1 open), 3 winners, -31.09%, DD 42.2%, PF 0.27 (buy & hold -27.3%)
-//   2024-11..2025-11  11 closed (+1 open), 9 winners, +42.31%, DD 25.1%, PF 5.61 (buy & hold +54.4%)
-//   2023-11..2024-11  11 closed, 7 winners, +50.33%, DD 24.2%, PF 5.60 (buy & hold +95.0%)
-//   2022-11..2023-11  12 closed, 9 winners, +13.92%, DD 20.7%, PF 1.72 (buy & hold +63.5%)
-//   2021-11..2022-11  11 closed, 6 winners, -39.65%, DD 62.7%, PF 0.46 (buy & hold -66.0%)
-// No stop: in a falling market an oversold entry can keep sliding for weeks before RSI ever reaches
-// 70, which is where both losing years come from. It never beat buy & hold in a rising year either.
+// Validated 2026-11-03 on 5 non-overlapping one-year windows (nov-2021..nov-2026), 0.1%/side fees:
+//   original 30/70 rule:  -39.7 / +13.9 / +50.3 / +42.3 / -31.1 %, DD 62.7%, combined -2%
+//   exit 'rsi'  (RSI>60): +8.3 / +8.1 / +24.6 / +33.1 / +7.0 %, DD 16.6%, 76% winners, combined +108%
+//   exit 'vwap':          +6.5 / +11.8 / +43.7 / +34.9 / +7.6 %, DD 17.6%, 89% winners, combined +127%
+//   buy & hold:           -66.0 / +63.5 / +95.0 / +54.4 / -27.3 %
+// Robustness: every one of the 27 neighbouring entries (level 24-26, VWAP 900-1200, slope 15-45
+// candles) stays positive in all 5 years with either exit, also with next-open fills + 0.05% slippage.
+// The exit level matters. RSI exits from 51 to 62 hold up. From 63 up they break: waiting for a higher
+// RSI lets trades turn into losses (average loss -2.5% -> -6%), and RSI>70 fails on all 27 neighbours.
+// Do not raise exitRsi above 62. Costs: about 5 trades a year, small gains (+2..5% typical) and no stop,
+// so a dip that never recovers the exit VWAP stays open.
 const RSI_ANALYSIS_DAYS = 365;
 const RSI_STRATEGY_PARAMS = {
   rsiPeriod: 14, overbought: 70, oversold: 30,
+  entryLevel: 25, trendVwapPeriod: 1000, trendLookback: 30,
+  exitMode: 'vwap', exitRsi: 60, exitVwapPeriod: 100, exitRsiCap: 65,
   analysisStart: Date.now() - RSI_ANALYSIS_DAYS * 86400000
 };
-const RSI_HISTORY_START = RSI_STRATEGY_PARAMS.analysisStart - 30 * 86400000;
+// Warm-up: VWAP(1000) plus its 30-candle slope needs ~172 days of 4h candles before the first trade.
+const RSI_HISTORY_START = RSI_STRATEGY_PARAMS.analysisStart - 200 * 86400000;

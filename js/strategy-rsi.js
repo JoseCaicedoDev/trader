@@ -1,43 +1,69 @@
-// Strategy: RSI zones (BTC/USDT 4h). Long only, no stop and no target.
+// Strategy: RSI dip-buying inside a VWAP uptrend (BTC/USDT 4h). Long only, no stop and no target.
 //
-// Opens a LONG on the candle where RSI crosses DOWN into oversold (< oversold) and closes it on the
-// candle where RSI crosses UP into overbought (> overbought): the classic mean-reversion use of RSI.
+// Entry: RSI crosses DOWN below `entryLevel` while the long rolling VWAP (`trendVwapPeriod` candles)
+// sits above where it was `trendLookback` candles earlier, i.e. only dips inside a rising trend are
+// bought. Without that gate the rule bought oversold readings in bear markets, which produced every
+// large loss of the original 30/70 rule.
 //
-// A position therefore lives from one oversold cross until the next overbought cross. Further
-// oversold crosses while long are ignored (the simulator does not pyramid). Only crosses at or after
-// `params.analysisStart` (ms) trade; candles before it exist solely to warm up RSI's smoothing.
+// Exit, chosen by `exitMode`:
+//   'rsi'  — RSI crosses UP above `exitRsi`.
+//   'vwap' — close crosses UP above the short rolling VWAP (`exitVwapPeriod`) OR RSI crosses above
+//            `exitRsiCap`, whichever happens first.
 //
-// Besides the backtest, `rsiStats` counts how often each zone was reached in the analysed window, so
-// the tab can answer "how many times did BTC go overbought / oversold in the last year".
+// Position state is tracked here (not left to the simulator) so an exit and an entry condition on the
+// same candle resolve exactly as in the validation engine: while long only exits are evaluated, while
+// flat only entries. Only entries at or after `params.analysisStart` (ms) trade; earlier candles exist
+// to warm up RSI and the long VWAP.
 //
-// Depends on: indicators.js (calculateRSI) and simulator.js (runSimulator). Must load after both.
+// `rsiStats` additionally counts how often RSI reached overbought (> overbought) and oversold
+// (< oversold) in the analysed window, which is what the tab's yearly card shows.
+//
+// Depends on: indicators.js (calculateRSI, calculateRollingVWAP) and simulator.js (runSimulator).
 function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
-  const { rsiPeriod, overbought, oversold, analysisStart = 0 } = params;
+  const { rsiPeriod, overbought, oversold, entryLevel, trendVwapPeriod, trendLookback,
+          exitMode, exitRsi, exitVwapPeriod, exitRsiCap, analysisStart = 0 } = params;
   const rsi = calculateRSI(data, rsiPeriod);
+  const trendVwap = calculateRollingVWAP(data, trendVwapPeriod);
+  const exitVwap = exitMode === 'vwap' ? calculateRollingVWAP(data, exitVwapPeriod) : null;
   const n = data.length;
+
+  const trendUp = i => i >= trendLookback && trendVwap[i] !== null && trendVwap[i - trendLookback] !== null
+    && trendVwap[i] > trendVwap[i - trendLookback];
+  const crossUp = (series, level, i) => series[i - 1] <= level && series[i] > level;
 
   const signals = new Array(n).fill(null);
   const labels = new Array(n).fill(null);
 
-  let firstIdx = n;
+  let firstIdx = n, inPos = false;
   let overboughtEvents = 0, oversoldEvents = 0, candlesOverbought = 0, candlesOversold = 0, counted = 0;
 
   for (let i = 1; i < n; i++) {
-    if (data[i].time * 1000 < analysisStart || rsi[i] === null) continue;
+    if (data[i].time * 1000 < analysisStart || rsi[i] === null || rsi[i - 1] === null) continue;
     if (firstIdx === n) firstIdx = i;
     counted++;
     if (rsi[i] > overbought) candlesOverbought++;
     if (rsi[i] < oversold) candlesOversold++;
-    if (rsi[i - 1] === null) continue;
+    if (crossUp(rsi, overbought, i)) overboughtEvents++;
+    if (rsi[i - 1] >= oversold && rsi[i] < oversold) oversoldEvents++;
 
-    if (rsi[i - 1] >= oversold && rsi[i] < oversold) {
-      oversoldEvents++;
+    if (inPos) {
+      let label = null;
+      if (exitMode === 'rsi') {
+        if (crossUp(rsi, exitRsi, i)) label = 'RSI_EXIT';
+      } else {
+        const c = data[i].close, cp = data[i - 1].close;
+        if (exitVwap[i] !== null && exitVwap[i - 1] !== null && cp <= exitVwap[i - 1] && c > exitVwap[i]) label = 'VWAP_EXIT';
+        else if (crossUp(rsi, exitRsiCap, i)) label = 'RSI_EXIT';
+      }
+      if (label) {
+        signals[i] = 'EXIT_LONG_MOMENTUM';
+        labels[i] = label;
+        inPos = false;
+      }
+    } else if (rsi[i - 1] >= entryLevel && rsi[i] < entryLevel && trendUp(i)) {
       signals[i] = 'BUY';
-      labels[i] = 'RSI_OVERSOLD';
-    } else if (rsi[i - 1] <= overbought && rsi[i] > overbought) {
-      overboughtEvents++;
-      signals[i] = 'EXIT_LONG_MOMENTUM';
-      labels[i] = 'RSI_OVERBOUGHT';
+      labels[i] = 'RSI_DIP_BUY';
+      inPos = true;
     }
   }
 
@@ -72,9 +98,13 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     // Buy-and-hold over the same window, so the strategy's return has something to be judged against.
     buyHoldPct: firstIdx < n ? (data[n - 1].close / data[firstIdx].close - 1) * 100 : 0
   };
+
+  const exitLevel = exitMode === 'rsi' ? exitRsi : exitRsiCap;
   backtest.indicators = [
+    { name: `VWAP (${trendVwapPeriod}) tendencia`, type: 'line', data: trendVwap, color: '#00e5ff' },
+    ...(exitVwap ? [{ name: `VWAP (${exitVwapPeriod}) salida`, type: 'line', data: exitVwap, color: '#ffca28', style: 2 }] : []),
     { name: `RSI (${rsiPeriod})`, type: 'line', data: rsi, color: '#b388ff',
-      priceScaleId: 'rsi', levels: [overbought, oversold] }
+      priceScaleId: 'rsi', levels: [entryLevel, exitLevel] }
   ];
 
   const last = n - 1;
@@ -85,6 +115,10 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     rsi: rsi[last],
     overbought,
     oversold,
+    entryLevel,
+    trendUp: trendUp(last),
+    trendVwap: trendVwap[last],
+    trendVwapPeriod,
     signal: signals[last],
     openTrade: openTrade ? {
       direction: 'LONG',

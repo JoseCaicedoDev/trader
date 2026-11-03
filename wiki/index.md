@@ -1,5 +1,7 @@
 # Índice del LLM Wiki
 
+- [RSI long BTC/USDT 4h: comparación y validación temporal (2026-11-03)](file:///c:/Users/gira/Desktop/backtesting/wiki/analisis_rsi_long_4h.md): diez variantes, ejecución siguiente apertura, evaluación separada y límites estadísticos.
+
 Bienvenido al Wiki personal de estrategias de trading cuantitativo. Este espacio actúa como base de conocimiento persistente para recopilar, interconectar y analizar las ideas de inversión y resultados de backtesting en criptomonedas.
 
 ---

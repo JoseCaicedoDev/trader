@@ -99,10 +99,19 @@ class SignalPanel {
       text.textContent = 'Calculando...';
       return;
     }
+    // Trend gate of the RSI + VWAP rule, shown in the (otherwise VWAP) first row.
+    if ('trendUp' in state && this.vwapDot && this.vwapText) {
+      this.vwapDot.className = state.trendUp ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
+      this.vwapText.textContent = state.trendVwap === null ? 'Calculando...'
+        : `${state.trendVwapPeriod} velas ${state.trendUp ? 'subiendo — compras activas' : 'bajando — sin compras'} ($${formatPrice(state.trendVwap, this.priceDecimals)})`;
+    }
     const value = state.rsi.toFixed(1);
     if (state.rsi > state.overbought) {
       dot.className = CSS_CLASSES.DOT_OK;
       text.textContent = `${value} — Sobrecompra (> ${state.overbought})`;
+    } else if (state.entryLevel !== undefined && state.rsi < state.entryLevel) {
+      dot.className = CSS_CLASSES.DOT_BAD;
+      text.textContent = `${value} — Zona de compra (< ${state.entryLevel})`;
     } else if (state.rsi < state.oversold) {
       dot.className = CSS_CLASSES.DOT_BAD;
       text.textContent = `${value} — Sobreventa (< ${state.oversold})`;
