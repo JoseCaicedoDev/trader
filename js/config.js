@@ -265,9 +265,18 @@ const RSI_HISTORY_START = RSI_STRATEGY_PARAMS.analysisStart - 200 * 86400000;
 // (VWAP over ~17 months) fails: 1/5 years positive. Validated 2026-11-04 with this engine on the same 5
 // yearly windows (nov-2021..nov-2026): +5.7 / +15.7 / +26.9 / +9.4 / +1.3 %, ~10.6 trades/yr, DD 14.6%;
 // neighbours VWAP 250, 400 and 500 (slope 10, exit 27) and exit VWAP 20 also hold 5/5.
+//
+// Too few entries on 12h with the 4h levels: the 12h RSI moves slower and rarely reaches 26/22. Retuned
+// for 12h (sweep of 228 combos, same engine, same 5 windows): RSI 9 instead of 14, deep tranches at 30/25
+// instead of 26/22, exit RSI 55 instead of 60 (shallow tranche kept at 35). Result: 23.4 trades/yr
+// (19/28/23/32/15) vs 10.6, +4.2 / +8.4 / +11.8 / +25.6 / +7.3 % (+11.5%/yr vs +11.8%), worst year +4.2%
+// vs +1.3%, DD 16.7% vs 14.6%. Neighbourhood (RSI 8/10, shallow 32/38, deep ±2, exit 52/58, trend VWAP
+// 250/400, exit VWAP 20/35): 9/12 hold 5/5 and 12/12 hold at least 4/5. RSI 7 gives ~37 trades/yr but
+// 26% drawdown and only 5/12 neighbours at 5/5, so it was not chosen.
 const RSI12H_STRATEGY_PARAMS = {
   ...RSI_STRATEGY_PARAMS,
-  trendVwapPeriod: 333, trendLookback: 10, exitVwapPeriod: 27, bearExitVwapPeriod: 27
+  trendVwapPeriod: 333, trendLookback: 10, exitVwapPeriod: 27, bearExitVwapPeriod: 27,
+  rsiPeriod: 9, scaleLevels: [30, 25], shallowLevel: 35, exitRsiCap: 55, exitRsi: 55
 };
 
 // "Riesgo histórico por tramo" card: the same rule on the same Binance 4h candles, measured from the
