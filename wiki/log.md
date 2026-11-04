@@ -1,5 +1,16 @@
 # Bitácora de Operaciones (Wiki Log)
 
+## [2026-11-03] sim | RSI + VWAP 4h — Aplicada Variante A2 (salida VWAP(80) o RSI > 60 sobre 3 tramos)
+- **Objetivo**: aumentar la rotación de entradas de la estrategia `RSI + VWAP — 4h` liberando antes el capital de cada tramo sin degradar el retorno ni el riesgo.
+- **Diagnóstico por tramo (5 ventanas anuales, 2021-11 a 2026-11)**: en la configuración previa (`entryMode: 'tranches3'`, `exitMode: 'rsi'`, `exitRsi: 60`), el Tramo 1 (`RSI > 35` confirmado) aportaba 11.6 operaciones/año, mientras los Tramos 2 (`< 26`) y 3 (`< 22`) hacían 5.4 y 3.0 operaciones/año. Cambiar la regla de salida a `exitMode: 'vwap'` con `exitVwapPeriod: 80` y `exitRsiCap: 60` libera antes el Tramo 1 cuando el precio recupera el `VWAP(80)` sin obligarlo a esperar `RSI > 60`.
+- **Resultado validado en las 5 ventanas anuales (2021-11..2026-11)**:
+  - Frecuencia total: sube de **20.0 a 22.2 operaciones/año** (`11 / 24 / 32 / 34 / 10` por año, frente a `11 / 23 / 26 / 32 / 8`).
+  - Tasa de acierto: sube de **72.0% a 73.9%**.
+  - Retorno acumulado 5 años: sube de **+88.0% a +89.5%** (`+4.90% / +10.63% / +25.87% / +24.64% / +3.74%`, **5/5 años positivos**).
+  - Peor año: mejora de **+2.56% a +3.74%**.
+  - Drawdown máximo: baja de **14.32% a 11.49%** (y en el último año se mantiene en **3.70%**).
+- **Cambios en producción**: actualizado [`RSI_STRATEGY_PARAMS`](file:///c:/Users/gira/Desktop/backtesting/js/config.js#L226-L233) en [js/config.js](file:///c:/Users/gira/Desktop/backtesting/js/config.js) (`exitMode: 'vwap'`, `exitVwapPeriod: 80`, `exitRsiCap: 60`) y la tarjeta de reglas de [index.html](file:///c:/Users/gira/Desktop/backtesting/index.html#L191-L196). El gráfico principal dibuja automáticamente la línea punteada amarilla `VWAP (80) salida` junto al `VWAP (1000) tendencia`.
+
 ## [2026-11-03] ingest | RSI vigente: cinco años y dos operaciones mensuales
 
 - Revisado el código actual RSI25/VWAP, distinto de la versión 30/70 del estudio anterior. Se preservaron los archivos de producción.

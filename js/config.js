@@ -195,9 +195,8 @@ const STRATEGY4_PARAMS = {
 // RSI + VWAP (BTC/USDT 4h, runRsiZoneStrategy). Long only, no stop.
 //   Entry: RSI14 crosses below 25 while VWAP(1000) is above its value 30 candles earlier (rising trend).
 //   Exit 'rsi':  RSI crosses above 60.
-//   Exit 'vwap': close crosses above VWAP(100), or RSI crosses above 65, whichever comes first.
-// The tab runs a single fixed rule: entryMode 'tranches3' with exitMode 'rsi' (user's choice). The
-// other modes stay in the engine only as documented alternatives.
+//   Exit 'vwap': close crosses above VWAP(exitVwapPeriod), or RSI crosses above exitRsiCap, whichever comes first.
+// The tab runs a single fixed rule: entryMode 'tranches3' with exitMode 'vwap' (VWAP(80) or RSI>60).
 //
 // Validated 2026-11-03 on 5 non-overlapping one-year windows (nov-2021..nov-2026), 0.1%/side fees:
 //   original 30/70 rule:  -39.7 / +13.9 / +50.3 / +42.3 / -31.1 %, DD 62.7%, combined -2%
@@ -208,25 +207,27 @@ const STRATEGY4_PARAMS = {
 // candles) stays positive in all 5 years with either exit, also with next-open fills + 0.05% slippage.
 // The exit level matters. RSI exits from 51 to 62 hold up. From 63 up they break: waiting for a higher
 // RSI lets trades turn into losses (average loss -2.5% -> -6%), and RSI>70 fails on all 27 neighbours.
-// Scaled entry (entryMode 'scaled', default since 2026-11-03): half the capital buys the RSI cross
-// below 26, the other half the cross below 22, both with the same exit. Same 5 windows, VWAP exit:
+// Scaled entry (entryMode 'scaled'): half the capital buys the RSI cross below 26, the other half
+// the cross below 22, both with the same exit. Same 5 windows, VWAP exit:
 //   +9.1 / +12.0 / +35.5 / +24.0 / +4.9 %, about 8.6 trades/yr (tranches) vs 5.2, worst year +4.9%,
 //   DD 16.6%; all 9 trend-filter neighbours stay positive in all 5 years. It trades more and keeps
 //   the bad years positive, but returns less than the single entry (+17%/yr vs +21%). Levels 25-27 for
 //   the first tranche are safe; from 28 up the 2021-22 bear year turns negative.
-// Three tranches (entryMode 'tranches3' + exitMode 'rsi', default since 2026-11-03): ⅓ buys when RSI
-// crosses back ABOVE 35 after being below it (shallow dips that start rebounding, e.g. 14 Aug and
-// 16 Sep 2026, which bottomed near RSI 33), ⅓ on the cross below 26, ⅓ below 22; each tranche sells
-// on RSI > 60. Same 5 windows: +5.2 / +11.5 / +21.2 / +25.3 / +4.0 %, ~20 trades/yr (~14 winners),
-// DD 14.3%, all 9 trend-filter neighbours positive in all 5 years. Shallow levels 33-38 all hold 8-9/9.
-// Buying the shallow dip on the way DOWN (cross below 35) is much weaker (3/9): keep the confirmation.
-// Do not raise exitRsi above 62. Costs: about 5 trades a year, small gains (+2..5% typical) and no stop,
-// so a dip that never recovers the exit VWAP stays open.
+// Three tranches (entryMode 'tranches3' + exitMode 'vwap' with VWAP(80)/RSI>60, Variant A2): ⅓ buys
+// when RSI crosses back ABOVE 35 after being below it (shallow dips that start rebounding, e.g. 14 Aug
+// and 16 Sep 2026, which bottomed near RSI 33), ⅓ on the cross below 26, ⅓ below 22; each tranche
+// sells when close crosses above VWAP(80) or RSI > 60, whichever comes first. Releasing tranches as
+// soon as price recovers VWAP(80) rotates the shallow tranche faster (11.6 -> 13.6 trades/yr, total
+// 20.0 -> 22.2 trades/yr across the 5 windows: 11/24/32/34/10), raises win rate (72.0% -> 73.9%),
+// improves combined 5-year return (+88.0% -> +89.5%) and worst-year return (+2.56% -> +3.74%), and
+// lowers max drawdown (14.32% -> 11.49%), while keeping 5/5 positive years (+4.9 / +10.6 / +25.9 /
+// +24.6 / +3.7 %). Buying the shallow dip on the way DOWN (cross below 35) is much weaker (3/9):
+// keep the confirmation. Do not raise exitRsiCap above 62.
 const RSI_ANALYSIS_DAYS = 365;
 const RSI_STRATEGY_PARAMS = {
   rsiPeriod: 14, overbought: 70, oversold: 30,
   entryLevel: 25, trendVwapPeriod: 1000, trendLookback: 30,
-  exitMode: 'rsi', exitRsi: 60, exitVwapPeriod: 100, exitRsiCap: 65,
+  exitMode: 'vwap', exitRsi: 60, exitVwapPeriod: 80, exitRsiCap: 60,
   entryMode: 'tranches3', scaleLevels: [26, 22], shallowLevel: 35,
   analysisStart: Date.now() - RSI_ANALYSIS_DAYS * 86400000
 };
