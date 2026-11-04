@@ -10,6 +10,9 @@
 //   'scaled' — two independent half-capital tranches: the first buys at `scaleLevels[0]`, the second
 //              at the deeper `scaleLevels[1]`; both use the same exit rule. The account is the 50/50
 //              blend of the two books, so every figure shown is that of the whole account.
+//   'tranches3' — three one-third tranches: a shallow-dip tranche that buys when RSI crosses back UP
+//              above `shallowLevel` after being below it (the rebound has to start), plus the two
+//              deep tranches of 'scaled'. Built to catch dips that bottom around RSI 33 in an uptrend.
 //
 // Exit, chosen by `exitMode`:
 //   'rsi'  — RSI crosses UP above `exitRsi`.
@@ -28,7 +31,7 @@
 function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
   const { rsiPeriod, overbought, oversold, entryLevel, trendVwapPeriod, trendLookback,
           exitMode, exitRsi, exitVwapPeriod, exitRsiCap, analysisStart = 0,
-          entryMode = 'single', scaleLevels = [26, 22] } = params;
+          entryMode = 'single', scaleLevels = [26, 22], shallowLevel = 35 } = params;
   const rsi = calculateRSI(data, rsiPeriod);
   const trendVwap = calculateRollingVWAP(data, trendVwapPeriod);
   const exitVwap = exitMode === 'vwap' ? calculateRollingVWAP(data, exitVwapPeriod) : null;
@@ -39,8 +42,9 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
   const crossUp = (series, level, i) => series[i - 1] <= level && series[i] > level;
   const tradable = i => data[i].time * 1000 >= analysisStart && rsi[i] !== null && rsi[i - 1] !== null;
 
-  // One book: buys the RSI cross below `level` inside the trend, sells on the exit rule.
-  function buildBook(level, entryLabel) {
+  // One book: buys inside the trend when RSI crosses below `level` (or, with `confirm`, crosses back
+  // above it), sells on the exit rule.
+  function buildBook(level, entryLabel, confirm = false) {
     const signals = new Array(n).fill(null);
     const labels = new Array(n).fill(null);
     let inPos = false;
@@ -56,7 +60,7 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
           else if (crossUp(rsi, exitRsiCap, i)) label = 'RSI_EXIT';
         }
         if (label) { signals[i] = 'EXIT_LONG_MOMENTUM'; labels[i] = label; inPos = false; }
-      } else if (rsi[i - 1] >= level && rsi[i] < level && trendUp(i)) {
+      } else if ((confirm ? crossUp(rsi, level, i) : rsi[i - 1] >= level && rsi[i] < level) && trendUp(i)) {
         signals[i] = 'BUY'; labels[i] = entryLabel; inPos = true;
       }
     }
@@ -67,9 +71,13 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     return bt;
   }
 
-  const backtest = entryMode === 'scaled'
-    ? mergeTranches([buildBook(scaleLevels[0], 'RSI_TRANCHE_1'), buildBook(scaleLevels[1], 'RSI_TRANCHE_2')], initialCapital)
-    : buildBook(entryLevel, 'RSI_DIP_BUY');
+  const deepBooks = () => [buildBook(scaleLevels[0], 'RSI_TRANCHE_1'), buildBook(scaleLevels[1], 'RSI_TRANCHE_2')];
+  const backtest = entryMode === 'tranches3'
+    ? mergeTranches([buildBook(shallowLevel, 'RSI_TRANCHE_SHALLOW', true), ...deepBooks()], initialCapital)
+    : entryMode === 'scaled'
+      ? mergeTranches(deepBooks(), initialCapital)
+      : buildBook(entryLevel, 'RSI_DIP_BUY');
+  const tranchesTotal = entryMode === 'tranches3' ? 3 : entryMode === 'scaled' ? 2 : 1;
 
   // Zone statistics of the analysed window (independent of the trading rule).
   let firstIdx = n, overboughtEvents = 0, oversoldEvents = 0, candlesOverbought = 0, candlesOversold = 0, counted = 0;
@@ -109,7 +117,8 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
   };
 
   const exitLevel = exitMode === 'rsi' ? exitRsi : exitRsiCap;
-  const entryLevels = entryMode === 'scaled' ? scaleLevels : [entryLevel];
+  const entryLevels = entryMode === 'tranches3' ? [shallowLevel, ...scaleLevels]
+    : entryMode === 'scaled' ? scaleLevels : [entryLevel];
   backtest.indicators = [
     { name: `VWAP (${trendVwapPeriod}) tendencia`, type: 'line', data: trendVwap, color: '#00e5ff' },
     ...(exitVwap ? [{ name: `VWAP (${exitVwapPeriod}) salida`, type: 'line', data: exitVwap, color: '#ffca28', style: 2 }] : []),
@@ -138,7 +147,7 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     // Live alert hook: a buy on the last candle in any book.
     signal: backtest.trades.some(t => t.type === 'BUY' && t.index === last) ? 'BUY' : null,
     openTrade: avgEntry !== null ? {
-      direction: entryMode === 'scaled' ? `LONG (${open.length}/2 tramos)` : 'LONG',
+      direction: tranchesTotal > 1 ? `LONG (${open.length}/${tranchesTotal} tramos)` : 'LONG',
       entryPrice: avgEntry,
       stopLoss: null,
       takeProfit: null,
@@ -171,7 +180,7 @@ function mergeTranches(books, initialCapital) {
   return {
     trades,
     equityCurve,
-    eventLabels: books[0].eventLabels.map((l, i) => l || books[1].eventLabels[i]),
+    eventLabels: books[0].eventLabels.map((l, i) => l || books.slice(1).map(b => b.eventLabels[i]).find(Boolean) || null),
     finalBalance: books.reduce((s, b) => s + w * b.finalBalance, 0),
     maxDrawdown: maxDd * 100,
     profitFactor: gl === 0 ? (gp > 0 ? Infinity : 1) : gp / gl,

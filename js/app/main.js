@@ -266,14 +266,16 @@ async function runBacktestFlow(key) {
 
 // Exit-rule switch on the RSI view. The choice is remembered per browser and re-runs the backtest on
 // the candles already loaded, so switching does not hit the Binance API again.
-const RSI_EXIT_STORAGE_KEY = 'rsiExitMode';
+// Keys carry a version: when the recommended default changes, a choice saved under the old default
+// must not silently hide the new one.
+const RSI_EXIT_STORAGE_KEY = 'rsiExitMode.v2';
 const RSI_EXIT_BTN_ACTIVE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-neon-purple/15 text-neon-purple border-neon-purple/40';
 const RSI_EXIT_BTN_IDLE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-white/5 text-gray-400 border-white/8 hover:text-gray-200';
 
 // One radio-style button group per strategy parameter (entry mode, exit mode).
 const RSI_SELECTORS = [
   { param: 'exitMode', storageKey: RSI_EXIT_STORAGE_KEY, selector: '.rsi-exit-btn', dataKey: 'exitMode', values: ['vwap', 'rsi'] },
-  { param: 'entryMode', storageKey: 'rsiEntryMode', selector: '.rsi-entry-btn', dataKey: 'entryMode', values: ['scaled', 'single'] }
+  { param: 'entryMode', storageKey: 'rsiEntryMode.v2', selector: '.rsi-entry-btn', dataKey: 'entryMode', values: ['tranches3', 'scaled', 'single'] }
 ];
 
 function initRsiExitSelector(view) {
@@ -286,9 +288,11 @@ function initRsiExitSelector(view) {
 
     const buttons = view.root.querySelectorAll(sel.selector);
     const base = sel.selector.slice(1);
+    // Layout classes from the markup (e.g. a full-width button) survive the restyling below.
+    buttons.forEach(b => { b.dataset.layout = [...b.classList].filter(c => c.startsWith('col-span')).join(' '); });
     const paint = () => buttons.forEach(b => {
       const active = b.dataset[sel.dataKey] === params[sel.param];
-      b.className = (active ? RSI_EXIT_BTN_ACTIVE : RSI_EXIT_BTN_IDLE).replace('rsi-exit-btn', base);
+      b.className = (active ? RSI_EXIT_BTN_ACTIVE : RSI_EXIT_BTN_IDLE).replace('rsi-exit-btn', base) + (b.dataset.layout ? ' ' + b.dataset.layout : '');
       b.setAttribute('role', 'radio');
       b.setAttribute('aria-checked', String(active));
     });
@@ -315,7 +319,8 @@ function renderBacktest(view, candles) {
   const lowerTitle = view.root.querySelector('.lower-chart-title');
   if (lowerTitle && view.config.showRsi) {
     const p = view.config.strategyParams;
-    const buy = p.entryMode === 'scaled' ? `compra ½ < ${p.scaleLevels[0]} y ½ < ${p.scaleLevels[1]}` : `compra < ${p.entryLevel}`;
+    const buy = p.entryMode === 'tranches3' ? `compra ⅓ vuelve > ${p.shallowLevel}, ⅓ < ${p.scaleLevels[0]}, ⅓ < ${p.scaleLevels[1]}`
+      : p.entryMode === 'scaled' ? `compra ½ < ${p.scaleLevels[0]} y ½ < ${p.scaleLevels[1]}` : `compra < ${p.entryLevel}`;
     lowerTitle.textContent = `RSI (${p.rsiPeriod}) · ${buy} · venta > ${p.exitMode === 'rsi' ? p.exitRsi : p.exitRsiCap}` +
       (p.exitMode === 'vwap' ? ` o precio > VWAP${p.exitVwapPeriod}` : '');
   }
@@ -338,7 +343,7 @@ function renderRsiAnalysis(root, s) {
   root.querySelector('.rsi-os-pct').textContent = `veces · ${s.pctOversold.toFixed(1)}% del tiempo`;
   root.querySelector('.rsi-trade-summary').innerHTML = closed === 0
     ? 'Ninguna operación cerrada en el periodo.'
-    : `<span class="text-white font-semibold">${s.winners} de ${closed}</span> ${s.entryMode === 'scaled' ? 'tramos (½ capital cada uno) cerrados' : 'operaciones cerradas'} en positivo<br>` +
+    : `<span class="text-white font-semibold">${s.winners} de ${closed}</span> ${s.entryMode === 'tranches3' ? 'tramos (⅓ capital cada uno) cerrados' : s.entryMode === 'scaled' ? 'tramos (½ capital cada uno) cerrados' : 'operaciones cerradas'} en positivo<br>` +
       `Ganancia media ${s.winners ? colored(s.avgWinPct) : '—'} · Pérdida media ${s.losers ? colored(s.avgLossPct) : 'ninguna'}<br>` +
       `Mejor ${colored(s.bestPct)} · Peor ${colored(s.worstPct)}<br>` +
       `Comprar y mantener BTC en el mismo periodo: ${colored(s.buyHoldPct)}`;

@@ -213,14 +213,20 @@ const STRATEGY4_PARAMS = {
 //   DD 16.6%; all 9 trend-filter neighbours stay positive in all 5 years. It trades more and keeps
 //   the bad years positive, but returns less than the single entry (+17%/yr vs +21%). Levels 25-27 for
 //   the first tranche are safe; from 28 up the 2021-22 bear year turns negative.
+// Three tranches (entryMode 'tranches3' + exitMode 'rsi', default since 2026-11-03): ⅓ buys when RSI
+// crosses back ABOVE 35 after being below it (shallow dips that start rebounding, e.g. 14 Aug and
+// 16 Sep 2026, which bottomed near RSI 33), ⅓ on the cross below 26, ⅓ below 22; each tranche sells
+// on RSI > 60. Same 5 windows: +5.2 / +11.5 / +21.2 / +25.3 / +4.0 %, ~20 trades/yr (~14 winners),
+// DD 14.3%, all 9 trend-filter neighbours positive in all 5 years. Shallow levels 33-38 all hold 8-9/9.
+// Buying the shallow dip on the way DOWN (cross below 35) is much weaker (3/9): keep the confirmation.
 // Do not raise exitRsi above 62. Costs: about 5 trades a year, small gains (+2..5% typical) and no stop,
 // so a dip that never recovers the exit VWAP stays open.
 const RSI_ANALYSIS_DAYS = 365;
 const RSI_STRATEGY_PARAMS = {
   rsiPeriod: 14, overbought: 70, oversold: 30,
   entryLevel: 25, trendVwapPeriod: 1000, trendLookback: 30,
-  exitMode: 'vwap', exitRsi: 60, exitVwapPeriod: 100, exitRsiCap: 65,
-  entryMode: 'scaled', scaleLevels: [26, 22],
+  exitMode: 'rsi', exitRsi: 60, exitVwapPeriod: 100, exitRsiCap: 65,
+  entryMode: 'tranches3', scaleLevels: [26, 22], shallowLevel: 35,
   analysisStart: Date.now() - RSI_ANALYSIS_DAYS * 86400000
 };
 // Warm-up: VWAP(1000) plus its 30-candle slope needs ~172 days of 4h candles before the first trade.
