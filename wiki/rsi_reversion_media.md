@@ -8,6 +8,8 @@ last_updated: 2026-07-13
 
 # RSI Reversión a la Media (RSI Mean Reversion)
 
+> Estado vigente revisado el 2026-11-03: la aplicación ahora usa RSI14 bajo 25 con VWAP1000 ascendente, y salida VWAP100 o RSI65 (opción alternativa RSI60). La nota 30/70 anterior describe la versión que existía al comenzar ese análisis. Véase la [evaluación de cinco años y dos operaciones mensuales](file:///c:/Users/gira/Desktop/backtesting/wiki/rsi_frecuencia_dos_operaciones_mes.md) para las reglas actuales, conteos mensuales y comparación de 972 variantes.
+
 > Actualización 2026-11-03: las reglas de rebote descritas abajo no coinciden con la pestaña actual. `js/strategy-rsi.js` implementa `runRsiZoneStrategy`: compra al caer bajo 30 y vende al superar 70, sin stop. La referencia posterior a `app.js` es histórica; el cálculo vigente está en `js/indicators.js`. Véase el [análisis reproducible de diez variantes long BTC/USDT 4h](file:///c:/Users/gira/Desktop/backtesting/wiki/analisis_rsi_long_4h.md), que no encuentra una ganadora robusta.
 
 Estrategia cuantitativa basada en osciladores. Consiste en monitorear los niveles de velocidad y cambio en los movimientos de precios usando el Índice de Fuerza Relativa (RSI).

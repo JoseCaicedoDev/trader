@@ -270,28 +270,38 @@ const RSI_EXIT_STORAGE_KEY = 'rsiExitMode';
 const RSI_EXIT_BTN_ACTIVE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-neon-purple/15 text-neon-purple border-neon-purple/40';
 const RSI_EXIT_BTN_IDLE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-white/5 text-gray-400 border-white/8 hover:text-gray-200';
 
+// One radio-style button group per strategy parameter (entry mode, exit mode).
+const RSI_SELECTORS = [
+  { param: 'exitMode', storageKey: RSI_EXIT_STORAGE_KEY, selector: '.rsi-exit-btn', dataKey: 'exitMode', values: ['vwap', 'rsi'] },
+  { param: 'entryMode', storageKey: 'rsiEntryMode', selector: '.rsi-entry-btn', dataKey: 'entryMode', values: ['scaled', 'single'] }
+];
+
 function initRsiExitSelector(view) {
-  try {
-    const saved = localStorage.getItem(RSI_EXIT_STORAGE_KEY);
-    if (saved === 'rsi' || saved === 'vwap') view.config.strategyParams.exitMode = saved;
-  } catch (e) { /* storage unavailable: keep the default */ }
+  const params = view.config.strategyParams;
+  RSI_SELECTORS.forEach(sel => {
+    try {
+      const saved = localStorage.getItem(sel.storageKey);
+      if (sel.values.includes(saved)) params[sel.param] = saved;
+    } catch (e) { /* storage unavailable: keep the default */ }
 
-  const buttons = view.root.querySelectorAll('.rsi-exit-btn');
-  const paint = () => buttons.forEach(b => {
-    const active = b.dataset.exitMode === view.config.strategyParams.exitMode;
-    b.className = active ? RSI_EXIT_BTN_ACTIVE : RSI_EXIT_BTN_IDLE;
-    b.setAttribute('aria-checked', String(active));
-    b.setAttribute('role', 'radio');
-  });
-  paint();
-
-  buttons.forEach(b => b.addEventListener('click', () => {
-    if (b.dataset.exitMode === view.config.strategyParams.exitMode) return;
-    view.config.strategyParams.exitMode = b.dataset.exitMode;
-    try { localStorage.setItem(RSI_EXIT_STORAGE_KEY, b.dataset.exitMode); } catch (e) { /* ignore */ }
+    const buttons = view.root.querySelectorAll(sel.selector);
+    const base = sel.selector.slice(1);
+    const paint = () => buttons.forEach(b => {
+      const active = b.dataset[sel.dataKey] === params[sel.param];
+      b.className = (active ? RSI_EXIT_BTN_ACTIVE : RSI_EXIT_BTN_IDLE).replace('rsi-exit-btn', base);
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(active));
+    });
     paint();
-    if (view.lastCandles && !view.isRunning) renderBacktest(view, view.lastCandles);
-  }));
+
+    buttons.forEach(b => b.addEventListener('click', () => {
+      if (b.dataset[sel.dataKey] === params[sel.param]) return;
+      params[sel.param] = b.dataset[sel.dataKey];
+      try { localStorage.setItem(sel.storageKey, params[sel.param]); } catch (e) { /* ignore */ }
+      paint();
+      if (view.lastCandles && !view.isRunning) renderBacktest(view, view.lastCandles);
+    }));
+  });
 }
 
 // Runs the strategy on already-loaded candles and refreshes every panel of the view.
@@ -305,7 +315,8 @@ function renderBacktest(view, candles) {
   const lowerTitle = view.root.querySelector('.lower-chart-title');
   if (lowerTitle && view.config.showRsi) {
     const p = view.config.strategyParams;
-    lowerTitle.textContent = `RSI (${p.rsiPeriod}) · compra < ${p.entryLevel} · venta > ${p.exitMode === 'rsi' ? p.exitRsi : p.exitRsiCap}` +
+    const buy = p.entryMode === 'scaled' ? `compra ½ < ${p.scaleLevels[0]} y ½ < ${p.scaleLevels[1]}` : `compra < ${p.entryLevel}`;
+    lowerTitle.textContent = `RSI (${p.rsiPeriod}) · ${buy} · venta > ${p.exitMode === 'rsi' ? p.exitRsi : p.exitRsiCap}` +
       (p.exitMode === 'vwap' ? ` o precio > VWAP${p.exitVwapPeriod}` : '');
   }
   return res;
@@ -327,7 +338,7 @@ function renderRsiAnalysis(root, s) {
   root.querySelector('.rsi-os-pct').textContent = `veces · ${s.pctOversold.toFixed(1)}% del tiempo`;
   root.querySelector('.rsi-trade-summary').innerHTML = closed === 0
     ? 'Ninguna operación cerrada en el periodo.'
-    : `<span class="text-white font-semibold">${s.winners} de ${closed}</span> operaciones cerradas en positivo<br>` +
+    : `<span class="text-white font-semibold">${s.winners} de ${closed}</span> ${s.entryMode === 'scaled' ? 'tramos (½ capital cada uno) cerrados' : 'operaciones cerradas'} en positivo<br>` +
       `Ganancia media ${s.winners ? colored(s.avgWinPct) : '—'} · Pérdida media ${s.losers ? colored(s.avgLossPct) : 'ninguna'}<br>` +
       `Mejor ${colored(s.bestPct)} · Peor ${colored(s.worstPct)}<br>` +
       `Comprar y mantener BTC en el mismo periodo: ${colored(s.buyHoldPct)}`;

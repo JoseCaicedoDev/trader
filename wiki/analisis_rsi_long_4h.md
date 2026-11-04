@@ -8,6 +8,8 @@ last_updated: 2026-11-03
 
 # RSI long en BTC/USDT 4h
 
+> Nota de vigencia: este informe corresponde a la versión 30/70 disponible al comenzar aquella revisión. El código cambió posteriormente a RSI25 con filtro VWAP y salida VWAP/RSI65. El [estudio posterior de cinco años y frecuencia mensual](file:///c:/Users/gira/Desktop/backtesting/wiki/rsi_frecuencia_dos_operaciones_mes.md) analiza la implementación vigente. Las cifras históricas de este documento no describen esa nueva versión.
+
 ## Conclusión
 
 La regla 30/70 sin stop no es una estrategia suficientemente robusta para recomendar su uso con todo el capital. En esta comparación de diez variantes, ninguna ofrece evidencia convincente de una ventaja estable y resistente a costos. Esperar el rebote por encima de 30, añadir EMA200 o acortar el RSI no resolvió el problema. Esto limita la conclusión a estas diez variantes y este activo/temporalidad; no demuestra que toda estrategia RSI sea inviable.

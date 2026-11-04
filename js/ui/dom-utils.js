@@ -18,6 +18,8 @@ const EVENT_LABELS = Object.freeze({
   EMA_CROSS_UP: 'Cruce Alcista EMA',
   EMA_CROSS_DOWN: 'Cruce Bajista EMA',
   RSI_DIP_BUY: 'RSI<25 en tendencia',
+  RSI_TRANCHE_1: 'Tramo 1 · RSI<26',
+  RSI_TRANCHE_2: 'Tramo 2 · RSI<22',
   RSI_EXIT: 'Salida RSI',
   VWAP_EXIT: 'Salida VWAP'
 });

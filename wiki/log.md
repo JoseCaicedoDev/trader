@@ -1,5 +1,13 @@
 # Bitácora de Operaciones (Wiki Log)
 
+## [2026-11-03] ingest | RSI vigente: cinco años y dos operaciones mensuales
+
+- Revisado el código actual RSI25/VWAP, distinto de la versión 30/70 del estudio anterior. Se preservaron los archivos de producción.
+- Descargadas velas 1h Binance con calentamiento y agregadas 2h/4h; comparadas 972 configuraciones sobre 2021-11-03 a 2026-11-03 UTC.
+- Creado [estudio de frecuencia mensual](file:///c:/Users/gira/Desktop/backtesting/wiki/rsi_frecuencia_dos_operaciones_mes.md) con separación temporal, revisión exploratoria de selección, costos de estrés, vecinos y conteos por mes.
+- Referencia actual: 26 cierres y 0,43/mes; ninguna de las 613 variantes con promedio >=2/mes sobrevivió con retorno positivo a costos duplicados.
+- Verificada paridad contra saldo/cierres de producción, OHLC nativo 4h, siguiente apertura, saltos de stop y exclusión de END de la cuota mensual.
+
 Registro cronológico y persistente de todas las operaciones realizadas sobre la base de conocimientos del LLM Wiki (ingestas, modificaciones, auditorías y simulaciones).
 
 ## [2026-07-25] sim | Estrategia 4 — ¿se pueden reducir las pérdidas? Stop de 5.5 a 5.0 ATR

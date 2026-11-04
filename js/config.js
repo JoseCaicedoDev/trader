@@ -207,6 +207,12 @@ const STRATEGY4_PARAMS = {
 // candles) stays positive in all 5 years with either exit, also with next-open fills + 0.05% slippage.
 // The exit level matters. RSI exits from 51 to 62 hold up. From 63 up they break: waiting for a higher
 // RSI lets trades turn into losses (average loss -2.5% -> -6%), and RSI>70 fails on all 27 neighbours.
+// Scaled entry (entryMode 'scaled', default since 2026-11-03): half the capital buys the RSI cross
+// below 26, the other half the cross below 22, both with the same exit. Same 5 windows, VWAP exit:
+//   +9.1 / +12.0 / +35.5 / +24.0 / +4.9 %, about 8.6 trades/yr (tranches) vs 5.2, worst year +4.9%,
+//   DD 16.6%; all 9 trend-filter neighbours stay positive in all 5 years. It trades more and keeps
+//   the bad years positive, but returns less than the single entry (+17%/yr vs +21%). Levels 25-27 for
+//   the first tranche are safe; from 28 up the 2021-22 bear year turns negative.
 // Do not raise exitRsi above 62. Costs: about 5 trades a year, small gains (+2..5% typical) and no stop,
 // so a dip that never recovers the exit VWAP stays open.
 const RSI_ANALYSIS_DAYS = 365;
@@ -214,6 +220,7 @@ const RSI_STRATEGY_PARAMS = {
   rsiPeriod: 14, overbought: 70, oversold: 30,
   entryLevel: 25, trendVwapPeriod: 1000, trendLookback: 30,
   exitMode: 'vwap', exitRsi: 60, exitVwapPeriod: 100, exitRsiCap: 65,
+  entryMode: 'scaled', scaleLevels: [26, 22],
   analysisStart: Date.now() - RSI_ANALYSIS_DAYS * 86400000
 };
 // Warm-up: VWAP(1000) plus its 30-candle slope needs ~172 days of 4h candles before the first trade.

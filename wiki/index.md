@@ -1,5 +1,7 @@
 # Índice del LLM Wiki
 
+- [RSI long: dos o más operaciones mensuales, cinco años](file:///c:/Users/gira/Desktop/backtesting/wiki/rsi_frecuencia_dos_operaciones_mes.md): versión vigente RSI25/VWAP, 972 variantes en 1h/2h/4h, frecuencia mensual real y costos.
+
 - [RSI long BTC/USDT 4h: comparación y validación temporal (2026-11-03)](file:///c:/Users/gira/Desktop/backtesting/wiki/analisis_rsi_long_4h.md): diez variantes, ejecución siguiente apertura, evaluación separada y límites estadísticos.
 
 Bienvenido al Wiki personal de estrategias de trading cuantitativo. Este espacio actúa como base de conocimiento persistente para recopilar, interconectar y analizar las ideas de inversión y resultados de backtesting en criptomonedas.
