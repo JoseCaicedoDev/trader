@@ -22,8 +22,8 @@
 // Bear-regime short book (`bearShort`), sized like one more tranche (1/3 of the capital): while the long
 // VWAP is FALLING (exactly when the long tranches cannot buy) it shorts when RSI crosses back DOWN
 // below `bearShortLevel` (a rebound rolling over), and covers when close crosses DOWN below
-// VWAP(`bearExitVwapPeriod`) or RSI crosses below `bearExitRsi`, with a fixed `bearStopPct` stop above
-// the entry. It never enters while a long tranche is still open (the trend can turn with a long held),
+// VWAP(`bearExitVwapPeriod`) or RSI crosses below `bearExitRsi`, with a stop `bearStopAtr` × ATR(14) above
+// the entry (or a fixed `bearStopPct` % when `bearStopAtr` is not set). It never enters while a long tranche is still open (the trend can turn with a long held),
 // so the account never holds both and never exceeds 100% exposure. On 5 years of history the guard
 // never had to act: the two regimes did not overlap once. Its
 // P&L is added on top of the long tranches' blend (see mergeTranches' `overlays`).
@@ -36,15 +36,18 @@
 // `rsiStats` additionally counts how often RSI reached overbought (> overbought) and oversold
 // (< oversold) in the analysed window, which is what the tab's yearly card shows.
 //
-// Depends on: indicators.js (calculateRSI, calculateRollingVWAP) and simulator.js (runSimulator).
+// Depends on: indicators.js (calculateRSI, calculateRollingVWAP, calculateATR) and simulator.js (runSimulator).
 function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
   const { rsiPeriod, overbought, oversold, entryLevel, trendVwapPeriod, trendLookback,
           exitMode, exitRsi, exitVwapPeriod, exitRsiCap, analysisStart = 0,
           entryMode = 'single', scaleLevels = [26, 22], shallowLevel = 35,
-          bearShort = false, bearShortLevel = 70, bearExitVwapPeriod = 80, bearExitRsi = 30, bearStopPct = 5 } = params;
+          bearShort = false, bearShortLevel = 70, bearExitVwapPeriod = 80, bearExitRsi = 30, bearStopPct = 5, bearStopAtr = null } = params;
   const rsi = calculateRSI(data, rsiPeriod);
   const trendVwap = calculateRollingVWAP(data, trendVwapPeriod);
   const exitVwap = exitMode === 'vwap' ? calculateRollingVWAP(data, exitVwapPeriod) : null;
+  // Short stop: `bearStopAtr` × ATR(14) above the entry when set, otherwise the fixed `bearStopPct`.
+  const atr = bearShort && bearStopAtr ? calculateATR(data, 14) : null;
+  const stopsByIndex = new Map(); // short entry index -> its stop price, for the position panel
   const bearVwap = bearShort
     ? (exitVwap && bearExitVwapPeriod === exitVwapPeriod ? exitVwap : calculateRollingVWAP(data, bearExitVwapPeriod))
     : null;
@@ -104,8 +107,9 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
         if (label) { signals[i] = 'EXIT_SHORT_MOMENTUM'; labels[i] = label; stop = null; }
       } else if (rsi[i - 1] >= bearShortLevel && rsi[i] < bearShortLevel && trendDown(i) && !longOpen[i]) {
         signals[i] = 'SHORT'; labels[i] = 'RSI_BEAR_SHORT';
-        stops[i] = data[i].close * (1 + bearStopPct / 100);
+        stops[i] = bearStopAtr ? data[i].close + bearStopAtr * atr[i] : data[i].close * (1 + bearStopPct / 100);
         stop = stops[i];
+        stopsByIndex.set(i, stop);
       }
     }
     const eventLabels = labels.slice();
@@ -215,7 +219,7 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     openTrade: openShort ? {
       direction: 'SHORT (⅓ capital)',
       entryPrice: openShort.price,
-      stopLoss: openShort.price * (1 + bearStopPct / 100),
+      stopLoss: stopsByIndex.get(openShort.index) ?? null,
       takeProfit: null,
       unrealizedPct: (openShort.price - data[last].close) / openShort.price * 100
     } : avgEntry !== null ? {

@@ -238,13 +238,23 @@ const STRATEGY4_PARAMS = {
 // worst +5.1. 8.6 shorts/yr (about 31 trades/yr in all), 63% winners, 12 shorts in the Nov-25..Aug-26
 // gap (+11.1% on the book). Trade-off: most of the gain is the 2021-22 bear year; in bull years the
 // short book loses a little and costs the account 1-3 points. Needs shorting (futures or margin).
+//
+// Short stop 3 x ATR(14) instead of a fixed 5% (bearStopAtr, applied 2026-11-04). Filters on the short
+// ENTRY cannot avoid losing clusters like the three stops of April 2026 (a strong bear rally): cooldown
+// after a stop, downtrend strength, VWAP(80) slope, stretch over VWAP(80), distance below VWAP(1000),
+// Stochastic RSI and MACD confirmations were all tested, and at entry those shorts look identical to
+// the March winners. A volatility-scaled stop makes each loss smaller instead: April -5.1/-5.1/-5.1 ->
+// -3.7/-4.5/-3.8. Account per window: +25.3 / +8.9 / +25.0 / +22.7 / +7.2 % (avg +17.8 vs +17.0, worst
+// +7.2 vs +6.0); the short book in bull years loses -5.2/-2.6/-5.9 instead of -8.5/-3.8/-9.9. Improves
+// 14 of 18 neighbours (short level 68-72 x exit RSI 30-35 x the old stop 3/5/8%). Costs win rate
+// (63% -> 57%): more, smaller losses. 2.5 ATR returns a bit more (+18.5) but holds only 11/18.
 const RSI_ANALYSIS_DAYS = 365;
 const RSI_STRATEGY_PARAMS = {
   rsiPeriod: 14, overbought: 70, oversold: 30,
   entryLevel: 25, trendVwapPeriod: 1000, trendLookback: 30,
   exitMode: 'vwap', exitRsi: 60, exitVwapPeriod: 80, exitRsiCap: 60,
   entryMode: 'tranches3', scaleLevels: [26, 22], shallowLevel: 35,
-  bearShort: true, bearShortLevel: 70, bearExitVwapPeriod: 80, bearExitRsi: 30, bearStopPct: 5,
+  bearShort: true, bearShortLevel: 70, bearExitVwapPeriod: 80, bearExitRsi: 30, bearStopAtr: 3,
   analysisStart: Date.now() - RSI_ANALYSIS_DAYS * 86400000
 };
 // Warm-up: VWAP(1000) plus its 30-candle slope needs ~172 days of 4h candles before the first trade.

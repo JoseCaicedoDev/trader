@@ -303,3 +303,11 @@ Registro cronológico y persistente de todas las operaciones realizadas sobre la
 - Aplicado (`bearShort` en `RSI_STRATEGY_PARAMS`): short cuando el RSI14 vuelve a bajar de 70 con el VWAP(1000) bajando; cubre cuando el cierre cruza bajo VWAP(80), con RSI < 30 o con stop del 5%. No entra si hay un tramo largo abierto.
 - Cuenta por ventana: +25,1 / +7,8 / +24,6 / +21,3 / +6,0 % (antes +4,9 / +10,6 / +25,9 / +24,6 / +3,7). Combinado nov-2021..nov-2026: 154 operaciones frente a 111, +101,4% frente a +89,5%, drawdown 11,2% frente a 11,7%, PF 2,51 frente a 4,22. La app reproduce exactamente las cifras del barrido.
 - Coste: la mejora se concentra en 2021-22; en años alcistas el short resta 1-3 puntos. Su margen sobre el acierto mínimo es estrecho (8,9 pts). Requiere poder vender en corto (futuros o margen).
+
+## [2026-11-04] change | Stop de 3 ATR en los shorts de RSI + VWAP 4h
+
+- Motivo: tres stops seguidos de −5,1% en abril de 2026, en un rebote fuerte dentro de la tendencia bajista.
+- Ningún filtro de entrada los evita, porque en el momento de entrar esos shorts son idénticos a los ganadores de marzo. Probados: pausa tras un stop, fuerza de la bajista, pendiente del VWAP(80), estiramiento sobre el VWAP(80), distancia bajo el VWAP(1000), RSI Estocástico y MACD.
+- RSI Estocástico y MACD también se probaron como confirmación en los tramos largos y como estrategia propia (solo RSI Estocástico + VWAP). No hubo mejora robusta en ningún caso.
+- Aplicado `bearStopAtr: 3` en lugar de `bearStopPct: 5`. Pérdidas de abril: −3,7 / −4,5 / −3,8 %. Cuenta por ventana: +25,3 / +8,9 / +25,0 / +22,7 / +7,2 % (media +17,8, peor +7,2). Mejora en 14 de 18 configuraciones vecinas. La app reproduce exactamente las cifras del estudio.
+- Combinado nov-2021..nov-2026: 159 operaciones, +107,7 %, drawdown 11,2 %, PF 2,65 (antes: 154, +101,4 %, 11,2 %, 2,51). El acierto del short baja del 63 % al 58 %, pero su pérdida media pasa de −5,1 % a −3,8 %.
