@@ -141,6 +141,16 @@ window.addEventListener('DOMContentLoaded', async () => {
       const chartPanel = root.querySelector('section[data-tab-panel="chart"]');
       chartPanel.classList.replace('grid-rows-[auto_1fr_auto]', 'grid-rows-[auto_auto_auto]');
       chartPanel.classList.add('content-start');
+
+      // Charts-only layout (user's choice for this view): no sidebar, no inner tabs, no chart header —
+      // just the price chart and the RSI chart. The panels still exist (hidden) so the code that fills
+      // them keeps working unchanged.
+      root.classList.replace('lg:grid-cols-[340px_minmax(0,1fr)]', 'lg:grid-cols-1');
+      root.querySelector('aside').classList.add('hidden');
+      root.querySelector('[role="tablist"]').classList.add('hidden');
+      chartPanel.firstElementChild.classList.add('hidden');
+      root.querySelector('.main-chart').classList.replace('lg:h-[46dvh]', 'lg:h-[56dvh]');
+      root.querySelector('.lower-chart').classList.replace('lg:h-[22dvh]', 'lg:h-[26dvh]');
     }
 
 
