@@ -59,6 +59,23 @@ const STRATEGIES_CONFIG = [
     showStochastic: false,
     showRsi: true,
     historyStart: RSI_HISTORY_START
+  },
+  {
+    // Same rule on 12h, shown side by side with the 4h view inside the RSI + VWAP tab (no own tab).
+    key: 'rsi12h',
+    splitWith: 'rsi',
+    title: 'RSI + VWAP — BTC 12h',
+    symbol: 'BTCUSDT',
+    timeframe: '12h',
+    accentColor: 'purple',
+    iconSvg: '<path d="M3 7h18"/><path d="M3 17h18"/><path d="m3 14 4-6 4 5 4-7 6 9"/>',
+    isEthTimeframe: false,
+    strategyType: 'rsi',
+    strategyParams: RSI12H_STRATEGY_PARAMS,
+    runStrategy: runRsiZoneStrategy,
+    showStochastic: false,
+    showRsi: true,
+    historyStart: RSI_HISTORY_START
   }
 ];
 
@@ -149,8 +166,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       root.querySelector('aside').classList.add('hidden');
       root.querySelector('[role="tablist"]').classList.add('hidden');
       chartPanel.firstElementChild.classList.add('hidden');
-      root.querySelector('.main-chart').classList.replace('lg:h-[46dvh]', 'lg:h-[56dvh]');
-      root.querySelector('.lower-chart').classList.replace('lg:h-[22dvh]', 'lg:h-[26dvh]');
+      root.querySelector('.main-chart').classList.replace('lg:h-[46dvh]', 'lg:h-[52dvh]');
+      root.querySelector('.lower-chart').classList.replace('lg:h-[22dvh]', 'lg:h-[24dvh]');
+      // Timeframe label on top of each half of the split screen.
+      const tfLabel = document.createElement('div');
+      tfLabel.className = 'text-sm font-bold tracking-wide text-white';
+      tfLabel.textContent = `${config.symbol.replace('USDT', '')} · ${config.timeframe}`;
+      chartPanel.prepend(tfLabel);
+      root.querySelector('[role="tablist"]').parentElement.classList.replace('lg:p-8', 'lg:p-4');
     }
 
 
@@ -210,7 +233,20 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 2. Initialize top-level strategy views switcher
   const switcherMap = {};
   Object.keys(views).forEach(k => {
-    switcherMap[k] = views[k].strategyView;
+    if (!views[k].config.splitWith) switcherMap[k] = views[k].strategyView;
+  });
+  // Split screen: a view with `splitWith` shares its partner's tab, the two side by side (4h | 12h).
+  Object.values(views).filter(v => v.config.splitWith && views[v.config.splitWith]).forEach(v => {
+    const partner = views[v.config.splitWith];
+    const split = document.createElement('div');
+    split.className = 'hidden grid-cols-1 xl:grid-cols-2 lg:h-full min-w-0 relative z-10';
+    partner.root.before(split);
+    [partner.root, v.root].forEach(r => { r.classList.remove('hidden'); r.classList.add('grid', 'min-w-0'); split.appendChild(r); });
+    switcherMap[v.config.splitWith] = {
+      root: split,
+      accentColor: partner.accentColor,
+      chartManager: { resize: () => { partner.chartManager.resize(); v.chartManager.resize(); } }
+    };
   });
   const momentumView = createMomentumView();
   if (momentumView) switcherMap.momentum = momentumView;
@@ -230,6 +266,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // a socket.
   setupLiveFeed('BTCUSDT', '4h', ['wyckoff', 'rsi']);
   setupLiveFeed('BTCUSDT', '2h', ['emacross2h']);
+  setupLiveFeed('BTCUSDT', '12h', ['rsi12h']);
 });
 
 // Generic Backtest Flow Runner

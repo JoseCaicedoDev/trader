@@ -107,7 +107,8 @@ function checkAndTriggerAlert(symbol, strategyName, price, signalType, timestamp
   const strategyLabels = {
     wyckoff: 'Wyckoff Unificada',
     emacross2h: 'VWAP + EMA Cross (2h)',
-    rsi: 'RSI Sobrecompra/Sobreventa (4h)'
+    rsi: 'RSI + VWAP (4h)',
+    rsi12h: 'RSI + VWAP (12h)'
   };
   const strategyLabel = strategyLabels[strategyName] || strategyName;
   const detail = eventLabel ? ` (${eventLabel})` : '';

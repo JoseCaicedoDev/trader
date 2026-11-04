@@ -260,6 +260,16 @@ const RSI_STRATEGY_PARAMS = {
 // Warm-up: VWAP(1000) plus its 30-candle slope needs ~172 days of 4h candles before the first trade.
 const RSI_HISTORY_START = RSI_STRATEGY_PARAMS.analysisStart - 200 * 86400000;
 
+// Same rule on BTC 12h for the split screen. Every period is rescaled to cover the SAME time as on 4h
+// (÷3): VWAP 1000 -> 333, slope 30 -> 10, exit/cover VWAP 80 -> 27. Keeping the 4h numbers on 12h
+// (VWAP over ~17 months) fails: 1/5 years positive. Validated 2026-11-04 with this engine on the same 5
+// yearly windows (nov-2021..nov-2026): +5.7 / +15.7 / +26.9 / +9.4 / +1.3 %, ~10.6 trades/yr, DD 14.6%;
+// neighbours VWAP 250, 400 and 500 (slope 10, exit 27) and exit VWAP 20 also hold 5/5.
+const RSI12H_STRATEGY_PARAMS = {
+  ...RSI_STRATEGY_PARAMS,
+  trendVwapPeriod: 333, trendLookback: 10, exitVwapPeriod: 27, bearExitVwapPeriod: 27
+};
+
 // "Riesgo histórico por tramo" card: the same rule on the same Binance 4h candles, measured from the
 // start of the 5-window validation (3 Nov 2021) instead of the tab's trailing year, so each tranche
 // has enough closed trades for its excursion percentiles to mean something. Candles are fetched from
