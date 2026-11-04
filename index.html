@@ -187,17 +187,13 @@
           </div>
           <span class="rsi-range text-[11px] text-gray-500 font-medium">—</span>
           <div class="grid gap-1.5">
-            <span class="text-[11px] text-gray-400 font-semibold">Regla de compra</span>
-            <div class="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Regla de compra">
-              <button type="button" data-entry-mode="tranches3" class="rsi-entry-btn col-span-2 text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors">3 tramos: ⅓ RSI vuelve &gt; 35 + ⅓ &lt; 26 + ⅓ &lt; 22</button>
-              <button type="button" data-entry-mode="scaled" class="rsi-entry-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors">Escalonada: ½ RSI &lt; 26 + ½ RSI &lt; 22</button>
-              <button type="button" data-entry-mode="single" class="rsi-entry-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors">Única: todo con RSI &lt; 25</button>
-            </div>
-            <span class="text-[11px] text-gray-400 font-semibold mt-1">Regla de venta</span>
-            <div class="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Regla de venta">
-              <button type="button" data-exit-mode="vwap" class="rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors">Precio &gt; VWAP100 o RSI &gt; 65</button>
-              <button type="button" data-exit-mode="rsi" class="rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors">RSI &gt; 60</button>
-            </div>
+            <span class="text-[11px] text-gray-400 font-semibold">Regla</span>
+            <ul class="text-[11px] text-gray-300 leading-5 bg-black/30 rounded-lg p-2.5 border border-white/5 grid gap-0.5">
+              <li>Compra ⅓ cuando el RSI vuelve &gt; 35</li>
+              <li>Compra ⅓ cuando el RSI cruza &lt; 26</li>
+              <li>Compra ⅓ cuando el RSI cruza &lt; 22</li>
+              <li>Vende cada tramo con RSI &gt; 60</li>
+            </ul>
             <span class="text-[11px] text-gray-500 leading-4">Solo compra con el VWAP de 1000 velas subiendo.</span>
           </div>
           <div class="grid grid-cols-2 gap-2 text-xs">

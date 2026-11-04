@@ -196,8 +196,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     };
   });
 
-  if (views.rsi) initRsiExitSelector(views.rsi);
-
   // 2. Initialize top-level strategy views switcher
   const switcherMap = {};
   Object.keys(views).forEach(k => {
@@ -262,50 +260,6 @@ async function runBacktestFlow(key) {
   } finally {
     view.isRunning = false;
   }
-}
-
-// Exit-rule switch on the RSI view. The choice is remembered per browser and re-runs the backtest on
-// the candles already loaded, so switching does not hit the Binance API again.
-// Keys carry a version: when the recommended default changes, a choice saved under the old default
-// must not silently hide the new one.
-const RSI_EXIT_STORAGE_KEY = 'rsiExitMode.v2';
-const RSI_EXIT_BTN_ACTIVE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-neon-purple/15 text-neon-purple border-neon-purple/40';
-const RSI_EXIT_BTN_IDLE = 'rsi-exit-btn text-[11px] font-semibold px-2 py-1.5 rounded-lg border transition-colors bg-white/5 text-gray-400 border-white/8 hover:text-gray-200';
-
-// One radio-style button group per strategy parameter (entry mode, exit mode).
-const RSI_SELECTORS = [
-  { param: 'exitMode', storageKey: RSI_EXIT_STORAGE_KEY, selector: '.rsi-exit-btn', dataKey: 'exitMode', values: ['vwap', 'rsi'] },
-  { param: 'entryMode', storageKey: 'rsiEntryMode.v2', selector: '.rsi-entry-btn', dataKey: 'entryMode', values: ['tranches3', 'scaled', 'single'] }
-];
-
-function initRsiExitSelector(view) {
-  const params = view.config.strategyParams;
-  RSI_SELECTORS.forEach(sel => {
-    try {
-      const saved = localStorage.getItem(sel.storageKey);
-      if (sel.values.includes(saved)) params[sel.param] = saved;
-    } catch (e) { /* storage unavailable: keep the default */ }
-
-    const buttons = view.root.querySelectorAll(sel.selector);
-    const base = sel.selector.slice(1);
-    // Layout classes from the markup (e.g. a full-width button) survive the restyling below.
-    buttons.forEach(b => { b.dataset.layout = [...b.classList].filter(c => c.startsWith('col-span')).join(' '); });
-    const paint = () => buttons.forEach(b => {
-      const active = b.dataset[sel.dataKey] === params[sel.param];
-      b.className = (active ? RSI_EXIT_BTN_ACTIVE : RSI_EXIT_BTN_IDLE).replace('rsi-exit-btn', base) + (b.dataset.layout ? ' ' + b.dataset.layout : '');
-      b.setAttribute('role', 'radio');
-      b.setAttribute('aria-checked', String(active));
-    });
-    paint();
-
-    buttons.forEach(b => b.addEventListener('click', () => {
-      if (b.dataset[sel.dataKey] === params[sel.param]) return;
-      params[sel.param] = b.dataset[sel.dataKey];
-      try { localStorage.setItem(sel.storageKey, params[sel.param]); } catch (e) { /* ignore */ }
-      paint();
-      if (view.lastCandles && !view.isRunning) renderBacktest(view, view.lastCandles);
-    }));
-  });
 }
 
 // Runs the strategy on already-loaded candles and refreshes every panel of the view.

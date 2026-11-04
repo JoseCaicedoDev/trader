@@ -196,7 +196,8 @@ const STRATEGY4_PARAMS = {
 //   Entry: RSI14 crosses below 25 while VWAP(1000) is above its value 30 candles earlier (rising trend).
 //   Exit 'rsi':  RSI crosses above 60.
 //   Exit 'vwap': close crosses above VWAP(100), or RSI crosses above 65, whichever comes first.
-// The tab lets the viewer switch exitMode; 'vwap' is the default.
+// The tab runs a single fixed rule: entryMode 'tranches3' with exitMode 'rsi' (user's choice). The
+// other modes stay in the engine only as documented alternatives.
 //
 // Validated 2026-11-03 on 5 non-overlapping one-year windows (nov-2021..nov-2026), 0.1%/side fees:
 //   original 30/70 rule:  -39.7 / +13.9 / +50.3 / +42.3 / -31.1 %, DD 62.7%, combined -2%
