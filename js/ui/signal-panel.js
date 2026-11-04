@@ -103,7 +103,7 @@ class SignalPanel {
     if ('trendUp' in state && this.vwapDot && this.vwapText) {
       this.vwapDot.className = state.trendUp ? CSS_CLASSES.DOT_OK : CSS_CLASSES.DOT_BAD;
       this.vwapText.textContent = state.trendVwap === null ? 'Calculando...'
-        : `${state.trendVwapPeriod} velas ${state.trendUp ? 'subiendo — compras activas' : 'bajando — sin compras'} ($${formatPrice(state.trendVwap, this.priceDecimals)})`;
+        : `${state.trendVwapPeriod} velas ${state.trendUp ? 'subiendo — compras activas' : state.bearShort ? 'bajando — modo short' : 'bajando — sin compras'} ($${formatPrice(state.trendVwap, this.priceDecimals)})`;
     }
     const value = state.rsi.toFixed(1);
     if (state.rsi > state.overbought) {

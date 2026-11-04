@@ -195,6 +195,11 @@
               <li>Vende cada tramo al cruzar sobre VWAP(80) o con RSI &gt; 60</li>
             </ul>
             <span class="text-[11px] text-gray-500 leading-4">Solo compra con el VWAP de 1000 velas subiendo.</span>
+            <span class="text-[11px] text-gray-400 font-semibold mt-1">Con el VWAP de 1000 velas bajando</span>
+            <ul class="text-[11px] text-gray-300 leading-5 bg-black/30 rounded-lg p-2.5 border border-white/5 grid gap-0.5">
+              <li>Short ⅓ cuando el RSI vuelve &lt; 70</li>
+              <li>Cubre al cruzar bajo VWAP(80), con RSI &lt; 30 o stop 5%</li>
+            </ul>
           </div>
           <div class="grid grid-cols-2 gap-2 text-xs">
             <div class="bg-black/30 rounded-lg p-2.5 border border-white/5 flex flex-col gap-0.5">
@@ -219,7 +224,7 @@
           </div>
           <span class="rsi-risk-range text-[11px] text-gray-500 font-medium">Cargando historial de Binance…</span>
           <div class="rsi-risk-body grid gap-2"></div>
-          <span class="text-[11px] text-gray-500 leading-4">Sin stop: la caída es lo que el tramo tuvo que aguantar antes de que la salida lo liberara. Margen = acierto real − acierto mínimo para no perder (pérdida media ÷ (ganancia media + pérdida media)).</span>
+          <span class="text-[11px] text-gray-500 leading-4">Caída = lo máximo que el precio fue en contra antes de salir (en el short, la subida). Los tramos largos no tienen stop; el short tiene stop del 5%. Margen = acierto real − acierto mínimo para no perder (pérdida media ÷ (ganancia media + pérdida media)).</span>
         </section>
 
         <!-- Metrics Summaries -->

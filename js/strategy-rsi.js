@@ -19,6 +19,15 @@
 //   'vwap' — close crosses UP above the short rolling VWAP (`exitVwapPeriod`) OR RSI crosses above
 //            `exitRsiCap`, whichever happens first.
 //
+// Bear-regime short book (`bearShort`), sized like one more tranche (1/3 of the capital): while the long
+// VWAP is FALLING (exactly when the long tranches cannot buy) it shorts when RSI crosses back DOWN
+// below `bearShortLevel` (a rebound rolling over), and covers when close crosses DOWN below
+// VWAP(`bearExitVwapPeriod`) or RSI crosses below `bearExitRsi`, with a fixed `bearStopPct` stop above
+// the entry. It never enters while a long tranche is still open (the trend can turn with a long held),
+// so the account never holds both and never exceeds 100% exposure. On 5 years of history the guard
+// never had to act: the two regimes did not overlap once. Its
+// P&L is added on top of the long tranches' blend (see mergeTranches' `overlays`).
+//
 // Position state is tracked here (not left to the simulator) so an exit and an entry condition on the
 // same candle resolve exactly as in the validation engine: while long only exits are evaluated, while
 // flat only entries. Only entries at or after `params.analysisStart` (ms) trade; earlier candles exist
@@ -31,14 +40,20 @@
 function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
   const { rsiPeriod, overbought, oversold, entryLevel, trendVwapPeriod, trendLookback,
           exitMode, exitRsi, exitVwapPeriod, exitRsiCap, analysisStart = 0,
-          entryMode = 'single', scaleLevels = [26, 22], shallowLevel = 35 } = params;
+          entryMode = 'single', scaleLevels = [26, 22], shallowLevel = 35,
+          bearShort = false, bearShortLevel = 70, bearExitVwapPeriod = 80, bearExitRsi = 30, bearStopPct = 5 } = params;
   const rsi = calculateRSI(data, rsiPeriod);
   const trendVwap = calculateRollingVWAP(data, trendVwapPeriod);
   const exitVwap = exitMode === 'vwap' ? calculateRollingVWAP(data, exitVwapPeriod) : null;
+  const bearVwap = bearShort
+    ? (exitVwap && bearExitVwapPeriod === exitVwapPeriod ? exitVwap : calculateRollingVWAP(data, bearExitVwapPeriod))
+    : null;
   const n = data.length;
 
   const trendUp = i => i >= trendLookback && trendVwap[i] !== null && trendVwap[i - trendLookback] !== null
     && trendVwap[i] > trendVwap[i - trendLookback];
+  const trendDown = i => i >= trendLookback && trendVwap[i] !== null && trendVwap[i - trendLookback] !== null
+    && trendVwap[i] <= trendVwap[i - trendLookback];
   const crossUp = (series, level, i) => series[i - 1] <= level && series[i] > level;
   const tradable = i => data[i].time * 1000 >= analysisStart && rsi[i] !== null && rsi[i - 1] !== null;
 
@@ -71,12 +86,54 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     return bt;
   }
 
+  // Short book for the falling-trend regime. The stop is checked first on each candle, as the
+  // simulator does, so a stopped position may re-enter on the same candle exactly like the engine.
+  function buildShortBook(longOpen) {
+    const signals = new Array(n).fill(null);
+    const labels = new Array(n).fill(null);
+    const stops = new Array(n).fill(null);
+    let stop = null;
+    for (let i = 1; i < n; i++) {
+      if (!tradable(i)) continue;
+      if (stop !== null && data[i].high >= stop) stop = null;
+      if (stop !== null) {
+        const c = data[i].close, cp = data[i - 1].close;
+        let label = null;
+        if (bearVwap[i] !== null && bearVwap[i - 1] !== null && cp >= bearVwap[i - 1] && c < bearVwap[i]) label = 'VWAP_EXIT';
+        else if (rsi[i - 1] >= bearExitRsi && rsi[i] < bearExitRsi) label = 'RSI_EXIT';
+        if (label) { signals[i] = 'EXIT_SHORT_MOMENTUM'; labels[i] = label; stop = null; }
+      } else if (rsi[i - 1] >= bearShortLevel && rsi[i] < bearShortLevel && trendDown(i) && !longOpen[i]) {
+        signals[i] = 'SHORT'; labels[i] = 'RSI_BEAR_SHORT';
+        stops[i] = data[i].close * (1 + bearStopPct / 100);
+        stop = stops[i];
+      }
+    }
+    const eventLabels = labels.slice();
+    const bt = runSimulator(data, signals, initialCapital, feePercent, stops, null, eventLabels);
+    for (const t of bt.trades) if (!t.eventCode && eventLabels[t.index]) t.eventCode = eventLabels[t.index];
+    bt.eventLabels = eventLabels;
+    return bt;
+  }
+
   const deepBooks = () => [buildBook(scaleLevels[0], 'RSI_TRANCHE_1'), buildBook(scaleLevels[1], 'RSI_TRANCHE_2')];
-  const backtest = entryMode === 'tranches3'
-    ? mergeTranches([buildBook(shallowLevel, 'RSI_TRANCHE_SHALLOW', true), ...deepBooks()], initialCapital)
-    : entryMode === 'scaled'
-      ? mergeTranches(deepBooks(), initialCapital)
-      : buildBook(entryLevel, 'RSI_DIP_BUY');
+  const longBooks = entryMode === 'tranches3'
+    ? [buildBook(shallowLevel, 'RSI_TRANCHE_SHALLOW', true), ...deepBooks()]
+    : entryMode === 'scaled' ? deepBooks() : [buildBook(entryLevel, 'RSI_DIP_BUY')];
+  // Candles where any long tranche is still open (from its entry up to its exit candle): the short book
+  // never enters there, so the account cannot hold a long and a short at once when the trend turns.
+  const longOpen = new Array(n).fill(false);
+  for (const b of longBooks) {
+    let from = null;
+    for (const t of b.trades) {
+      if (t.type === 'BUY') from = t.index;
+      else if (from !== null) { for (let j = from; j <= t.index; j++) longOpen[j] = true; from = null; }
+    }
+    if (from !== null) for (let j = from; j < n; j++) longOpen[j] = true;
+  }
+  const overlays = bearShort ? [buildShortBook(longOpen)] : [];
+  const backtest = longBooks.length > 1 || overlays.length
+    ? mergeTranches(longBooks, initialCapital, overlays)
+    : longBooks[0];
   const tranchesTotal = entryMode === 'tranches3' ? 3 : entryMode === 'scaled' ? 2 : 1;
 
   // Zone statistics of the analysed window (independent of the trading rule).
@@ -91,7 +148,7 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     if (rsi[i - 1] >= oversold && rsi[i] < oversold) oversoldEvents++;
   }
 
-  const closed = backtest.trades.filter(t => t.type === 'SELL');
+  const closed = backtest.trades.filter(t => t.type === 'SELL' || t.type === 'COVER');
   const winners = closed.filter(t => t.pnl > 0);
   const losers = closed.filter(t => t.pnl <= 0);
   const sumPct = list => list.reduce((s, t) => s + t.pnlPercent, 0);
@@ -122,21 +179,26 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
   const exitLevel = exitMode === 'rsi' ? exitRsi : exitRsiCap;
   const entryLevels = entryMode === 'tranches3' ? [shallowLevel, ...scaleLevels]
     : entryMode === 'scaled' ? scaleLevels : [entryLevel];
+  const bearLevels = bearShort ? [bearShortLevel, bearExitRsi] : [];
   backtest.indicators = [
     { name: `VWAP (${trendVwapPeriod}) tendencia`, type: 'line', data: trendVwap, color: '#00e5ff' },
     ...(exitVwap ? [{ name: `VWAP (${exitVwapPeriod}) salida`, type: 'line', data: exitVwap, color: '#ffca28', style: 2 }] : []),
     { name: `RSI (${rsiPeriod})`, type: 'line', data: rsi, color: '#b388ff',
-      priceScaleId: 'rsi', levels: [...entryLevels, exitLevel] }
+      priceScaleId: 'rsi', levels: [...new Set([...entryLevels, exitLevel, ...bearLevels])] }
   ];
 
-  // Open tranches (0, 1 or 2). Their average entry is what the position panel shows.
+  // Open positions: long tranches (their average entry is what the position panel shows) or the bear
+  // short, never both at once.
   const last = n - 1;
   const openByBook = new Map();
   for (const t of backtest.trades) {
     const book = t.book || 'strategy';
-    if (t.type === 'BUY') openByBook.set(book, t); else openByBook.delete(book);
+    if (t.type === 'BUY' || t.type === 'SHORT') openByBook.set(book, t); else openByBook.delete(book);
   }
-  const open = [...openByBook.values()];
+  const openAll = [...openByBook.values()];
+  const openShort = openAll.find(t => t.type === 'SHORT') || null;
+  const open = openAll.filter(t => t.type === 'BUY');
+  const lastEntry = backtest.trades.find(t => (t.type === 'BUY' || t.type === 'SHORT') && t.index === last);
   const avgEntry = open.length ? open.reduce((s, t) => s + t.price, 0) / open.length : null;
   backtest.currentState = {
     price: data[last].close,
@@ -145,11 +207,18 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     oversold,
     entryLevel: entryLevels[0],
     trendUp: trendUp(last),
+    bearShort,
     trendVwap: trendVwap[last],
     trendVwapPeriod,
     // Live alert hook: a buy on the last candle in any book.
-    signal: backtest.trades.some(t => t.type === 'BUY' && t.index === last) ? 'BUY' : null,
-    openTrade: avgEntry !== null ? {
+    signal: lastEntry ? lastEntry.type : null,
+    openTrade: openShort ? {
+      direction: 'SHORT (⅓ capital)',
+      entryPrice: openShort.price,
+      stopLoss: openShort.price * (1 + bearStopPct / 100),
+      takeProfit: null,
+      unrealizedPct: (openShort.price - data[last].close) / openShort.price * 100
+    } : avgEntry !== null ? {
       direction: tranchesTotal > 1 ? `LONG (${open.length}/${tranchesTotal} tramos)` : 'LONG',
       entryPrice: avgEntry,
       stopLoss: null,
@@ -164,30 +233,37 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
 // Account made of equal-capital tranches. Each book was simulated with the full capital, so the
 // account equals the average of the books; trade P&L in $ is scaled to the tranche's share of the
 // account (its % is unchanged), and `accountEquity` is the account balance at that candle.
-function mergeTranches(books, initialCapital) {
+// `overlays` are books that trade only while every tranche is flat (the bear short): they reuse one
+// tranche's share of the idle capital, so only their P&L (equity - initial capital) is added.
+function mergeTranches(books, initialCapital, overlays = []) {
   const w = 1 / books.length;
+  const all = [...books, ...overlays];
   const equityCurve = books[0].equityCurve.map((p, i) => ({
-    time: p.time, value: books.reduce((s, b) => s + w * b.equityCurve[i].value, 0)
+    time: p.time,
+    value: books.reduce((s, b) => s + w * b.equityCurve[i].value, 0)
+      + overlays.reduce((s, b) => s + w * (b.equityCurve[i].value - initialCapital), 0)
   }));
   let peak = initialCapital, maxDd = 0;
   for (const p of equityCurve) {
     if (p.value > peak) peak = p.value;
     maxDd = Math.max(maxDd, (peak - p.value) / peak);
   }
-  const trades = books
-    .flatMap((b, k) => b.trades.map(t => ({ ...t, book: `tramo${k + 1}`, pnl: t.pnl * w })))
+  const trades = all
+    .flatMap((b, k) => b.trades.map(t => ({ ...t, book: k < books.length ? `tramo${k + 1}` : 'bajista', pnl: t.pnl * w })))
     .map(t => ({ ...t, accountEquity: equityCurve[t.index].value }))
     .sort((a, b) => a.index - b.index || a.book.localeCompare(b.book));
   let gp = 0, gl = 0;
-  for (const t of trades) if (t.type === 'SELL') { if (t.pnl > 0) gp += t.pnl; else gl -= t.pnl; }
+  const isClose = t => t.type === 'SELL' || t.type === 'COVER';
+  for (const t of trades) if (isClose(t)) { if (t.pnl > 0) gp += t.pnl; else gl -= t.pnl; }
   return {
     trades,
     equityCurve,
-    eventLabels: books[0].eventLabels.map((l, i) => l || books.slice(1).map(b => b.eventLabels[i]).find(Boolean) || null),
-    finalBalance: books.reduce((s, b) => s + w * b.finalBalance, 0),
+    eventLabels: all[0].eventLabels.map((l, i) => l || all.slice(1).map(b => b.eventLabels[i]).find(Boolean) || null),
+    finalBalance: books.reduce((s, b) => s + w * b.finalBalance, 0)
+      + overlays.reduce((s, b) => s + w * (b.finalBalance - initialCapital), 0),
     maxDrawdown: maxDd * 100,
     profitFactor: gl === 0 ? (gp > 0 ? Infinity : 1) : gp / gl,
-    totalTrades: trades.filter(t => t.type === 'SELL').length
+    totalTrades: trades.filter(isClose).length
   };
 }
 
@@ -213,19 +289,28 @@ function computeTrancheRisk(data, bt, bookNames) {
     for (let i = from; i <= to; i++) lo = Math.min(lo, data[i].low);
     return lo;
   };
+  const highestHigh = (from, to) => {
+    let hi = -Infinity;
+    for (let i = from; i <= to; i++) hi = Math.max(hi, data[i].high);
+    return hi;
+  };
+  // Adverse excursion in %, negative = against the position: lows for a long, highs for a short.
+  const excursion = (e, to) => e.type === 'SHORT'
+    ? -(highestHigh(e.index + 1, to) / e.price - 1) * 100
+    : (lowestLow(e.index + 1, to) / e.price - 1) * 100;
   const last = data.length - 1;
   const books = {};
   const open = {};
   for (const t of bt.trades) {
     const b = t.book || 'tramo1';
     books[b] = books[b] || { closed: [], open: null };
-    if (t.type === 'BUY') { open[b] = t; continue; }
+    if (t.type === 'BUY' || t.type === 'SHORT') { open[b] = t; continue; }
     const e = open[b];
     if (!e) continue;
     delete open[b];
     books[b].closed.push({
       pnl: t.pnlPercent,
-      mae: (lowestLow(e.index + 1, t.index) / e.price - 1) * 100,
+      mae: excursion(e, t.index),
       days: (t.index - e.index) / 6
     });
   }
@@ -234,13 +319,15 @@ function computeTrancheRisk(data, bt, bookNames) {
     books[b].open = {
       entryTime: data[e.index].time,
       entryPrice: e.price,
-      nowPct: (data[last].close / e.price - 1) * 100,
-      maePct: e.index < last ? (lowestLow(e.index + 1, last) / e.price - 1) * 100 : 0,
+      nowPct: (e.type === 'SHORT' ? -1 : 1) * (data[last].close / e.price - 1) * 100,
+      maePct: e.index < last ? excursion(e, last) : 0,
       days: (last - e.index) / 6
     };
   }
 
-  return Object.keys(books).sort().map((b, k) => {
+  // tramo1..N first (entry-level order), then the bear short book.
+  const order = Object.keys(books).sort((a, b) => (a === 'bajista') - (b === 'bajista') || a.localeCompare(b));
+  return order.map((b, k) => {
     const { closed, open: o } = books[b];
     const wins = closed.filter(x => x.pnl > 0), losses = closed.filter(x => x.pnl <= 0);
     const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
@@ -251,6 +338,7 @@ function computeTrancheRisk(data, bt, bookNames) {
     return {
       book: b,
       name: (bookNames && bookNames[k]) || b,
+      short: b === 'bajista',
       trades: closed.length,
       winRate,
       avgWin,

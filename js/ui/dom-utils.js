@@ -21,6 +21,7 @@ const EVENT_LABELS = Object.freeze({
   RSI_TRANCHE_SHALLOW: 'Tramo suave · RSI vuelve >35',
   RSI_TRANCHE_1: 'Tramo · RSI<26',
   RSI_TRANCHE_2: 'Tramo · RSI<22',
+  RSI_BEAR_SHORT: 'Short bajista · RSI vuelve <70',
   RSI_EXIT: 'Salida RSI',
   VWAP_EXIT: 'Salida VWAP'
 });

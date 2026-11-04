@@ -295,3 +295,11 @@ Registro cronológico y persistente de todas las operaciones realizadas sobre la
 - `computeTrancheRisk` (js/strategy-rsi.js) mide por tramo, desde el 3 nov 2021, con las mismas velas 4h de Binance: margen sobre el acierto mínimo, caída máxima desde la entrada (MAE) mediana/p90/peor, días típicos y estado del tramo abierto. El historial largo se descarga una sola vez por sesión.
 - Datos: superficial (vuelve > 35) 68 ops, 68 % acierto, margen 14,6 pts, peor caída −24,2 %; <26 y <22 tienen márgenes de ~54 pts.
 - Estudio del tramo superficial (5 ventanas, paridad exacta con la app): 1.120 variantes de nivel/salida/filtro. Ninguna mejora más de ~1 pt/año de media; quitar el tramo da +16,2 % frente a +14,0 % de media con el mismo peor año, pero con ~13,6 operaciones/año menos. Sin cambios en la regla.
+
+## [2026-11-04] change | Shorts en tendencia bajista en RSI + VWAP 4h
+
+- Motivo: de nov 2025 a ago 2026 el VWAP(1000) bajó en el 99% de las velas y la pestaña no hizo ninguna operación. Sin el filtro, ese periodo habría costado −18% a la cuenta, así que el filtro se mantiene.
+- Barrido de 768 reglas solo para tendencia bajista (5 ventanas, ⅓ del capital): los longs no mejoran la cuenta en ninguna variante (0/384); los shorts sí en 68/384.
+- Aplicado (`bearShort` en `RSI_STRATEGY_PARAMS`): short cuando el RSI14 vuelve a bajar de 70 con el VWAP(1000) bajando; cubre cuando el cierre cruza bajo VWAP(80), con RSI < 30 o con stop del 5%. No entra si hay un tramo largo abierto.
+- Cuenta por ventana: +25,1 / +7,8 / +24,6 / +21,3 / +6,0 % (antes +4,9 / +10,6 / +25,9 / +24,6 / +3,7). Combinado nov-2021..nov-2026: 154 operaciones frente a 111, +101,4% frente a +89,5%, drawdown 11,2% frente a 11,7%, PF 2,51 frente a 4,22. La app reproduce exactamente las cifras del barrido.
+- Coste: la mejora se concentra en 2021-22; en años alcistas el short resta 1-3 puntos. Su margen sobre el acierto mínimo es estrecho (8,9 pts). Requiere poder vender en corto (futuros o margen).

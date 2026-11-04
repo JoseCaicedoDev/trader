@@ -223,12 +223,28 @@ const STRATEGY4_PARAMS = {
 // lowers max drawdown (14.32% -> 11.49%), while keeping 5/5 positive years (+4.9 / +10.6 / +25.9 /
 // +24.6 / +3.7 %). Buying the shallow dip on the way DOWN (cross below 35) is much weaker (3/9):
 // keep the confirmation. Do not raise exitRsiCap above 62.
+//
+// Bear-regime shorts (bearShort*, added 2026-11-04). With VWAP(1000) falling the long tranches cannot
+// buy: from Nov 2025 to Aug 2026 the trend was down on 99% of candles and the tab made no trades.
+// Without the filter that gap would have cost the account -18% (BTC -39.5%), so the filter stays. A
+// fourth book, sized like one tranche (1/3 of the capital, which is idle in that regime), trades it
+// instead: SHORT when RSI14 crosses back below 70 while VWAP(1000) falls; COVER when close crosses
+// below VWAP(80) or RSI crosses below 30; fixed 5% stop above the entry. It never overlaps a long.
+// Sweep of 768 bear-regime books on the 5 windows: longs 0/384 improve the account robustly (the
+// Feb and Jun 2026 crashes erase every small win, even with stops); shorts 68/384. Account per window
+// (3 tranches + shorts): +25.1 / +7.8 / +24.6 / +21.3 / +6.0 % (avg +17.0 vs +14.0, worst +6.0 vs
+// +3.7). 100% of neighbours (level, exit VWAP 40-80, exit RSI 30-45, stop 3-8) also improve the
+// account; levels 66-72 all hold and 75 drops. With next-open fills + 0.05% slippage: avg +16.3,
+// worst +5.1. 8.6 shorts/yr (about 31 trades/yr in all), 63% winners, 12 shorts in the Nov-25..Aug-26
+// gap (+11.1% on the book). Trade-off: most of the gain is the 2021-22 bear year; in bull years the
+// short book loses a little and costs the account 1-3 points. Needs shorting (futures or margin).
 const RSI_ANALYSIS_DAYS = 365;
 const RSI_STRATEGY_PARAMS = {
   rsiPeriod: 14, overbought: 70, oversold: 30,
   entryLevel: 25, trendVwapPeriod: 1000, trendLookback: 30,
   exitMode: 'vwap', exitRsi: 60, exitVwapPeriod: 80, exitRsiCap: 60,
   entryMode: 'tranches3', scaleLevels: [26, 22], shallowLevel: 35,
+  bearShort: true, bearShortLevel: 70, bearExitVwapPeriod: 80, bearExitRsi: 30, bearStopPct: 5,
   analysisStart: Date.now() - RSI_ANALYSIS_DAYS * 86400000
 };
 // Warm-up: VWAP(1000) plus its 30-candle slope needs ~172 days of 4h candles before the first trade.

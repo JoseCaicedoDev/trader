@@ -291,7 +291,7 @@ class ChartManager {
   compactMarkers(trades) {
     const groups = new Map();
     for (const t of trades) {
-      if (t.type !== 'BUY' && t.type !== 'SELL') continue;
+      if (!['BUY', 'SELL', 'SHORT', 'COVER'].includes(t.type)) continue;
       const key = `${t.time}|${t.type}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(t);
@@ -302,11 +302,15 @@ class ChartManager {
       const times = list.length > 1 ? ` ×${list.length}` : '';
       if (t.type === 'BUY') {
         markers.push({ time: t.time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'Compra' + times });
+      } else if (t.type === 'SHORT') {
+        markers.push({ time: t.time, position: 'aboveBar', color: '#ff1744', shape: 'arrowDown', text: 'Short' + times });
       } else {
+        // SELL closes a long (marker above the bar), COVER closes a short (below the bar).
         const pct = list.reduce((s, x) => s + x.pnlPercent, 0) / list.length;
+        const cover = t.type === 'COVER';
         markers.push({
-          time: t.time, position: 'aboveBar', color: pct >= 0 ? '#00e676' : '#ff1744', shape: 'arrowDown',
-          text: (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%' + times
+          time: t.time, position: cover ? 'belowBar' : 'aboveBar', color: pct >= 0 ? '#00e676' : '#ff1744',
+          shape: cover ? 'arrowUp' : 'arrowDown', text: (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%' + times
         });
       }
     }

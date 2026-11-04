@@ -280,7 +280,8 @@ function renderBacktest(view, candles) {
     const buy = p.entryMode === 'tranches3' ? `compra ⅓ vuelve > ${p.shallowLevel}, ⅓ < ${p.scaleLevels[0]}, ⅓ < ${p.scaleLevels[1]}`
       : p.entryMode === 'scaled' ? `compra ½ < ${p.scaleLevels[0]} y ½ < ${p.scaleLevels[1]}` : `compra < ${p.entryLevel}`;
     lowerTitle.textContent = `RSI (${p.rsiPeriod}) · ${buy} · venta > ${p.exitMode === 'rsi' ? p.exitRsi : p.exitRsiCap}` +
-      (p.exitMode === 'vwap' ? ` o precio > VWAP${p.exitVwapPeriod}` : '');
+      (p.exitMode === 'vwap' ? ` o precio > VWAP${p.exitVwapPeriod}` : '') +
+      (p.bearShort ? ` · bajista: short vuelve < ${p.bearShortLevel}, cubre < ${p.bearExitRsi}` : '');
   }
   return res;
 }
@@ -329,6 +330,7 @@ async function updateRsiRisk(view, candles) {
     const names = p.entryMode === 'tranches3'
       ? [`Vuelve > ${p.shallowLevel}`, `Cruza < ${p.scaleLevels[0]}`, `Cruza < ${p.scaleLevels[1]}`]
       : p.entryMode === 'scaled' ? [`Cruza < ${p.scaleLevels[0]}`, `Cruza < ${p.scaleLevels[1]}`] : [`Cruza < ${p.entryLevel}`];
+    if (p.bearShort) names.push(`Short bajista · vuelve < ${p.bearShortLevel}`);
     renderRsiRisk(card, computeTrancheRisk(data, bt, names), RSI_RISK_ANALYSIS_START / 1000, data[data.length - 1].time);
   } catch (error) {
     console.error(error);
@@ -378,7 +380,7 @@ function renderRsiRisk(card, rows, from, to) {
         <div class="flex flex-col"><span class="text-[10px] text-gray-500">Peor caída</span>
           <span class="text-neon-rose font-semibold">${pct(r.maeWorst)}</span></div>
       </div>
-      <div class="text-[11px] text-gray-500 mt-1">${r.winnersDeepDip} de ${r.winners} ganadoras estuvieron más de −5% abajo antes de ganar.</div>
+      <div class="text-[11px] text-gray-500 mt-1">${r.winnersDeepDip} de ${r.winners} ganadoras estuvieron más de −5% en contra antes de ganar.</div>
       ${openLine}
     </div>`;
   }).join('');
@@ -436,7 +438,7 @@ function setupLiveFeed(symbol, timeframe, configKeys) {
           const eventType = view.config.strategyType === 'wyckoff'
             ? res.currentState.lastEvent
             : view.config.strategyType === 'rsi'
-              ? EVENT_LABELS.RSI_DIP_BUY
+              ? (res.currentState.signal === 'SHORT' ? EVENT_LABELS.RSI_BEAR_SHORT : EVENT_LABELS.RSI_DIP_BUY)
               : (res.currentState.signal === 'BUY' ? 'EMA_CROSS_UP' : 'EMA_CROSS_DOWN');
           checkAndTriggerAlert(symbol, key, res.currentState.price, res.currentState.signal, kline.time, eventType);
         }
