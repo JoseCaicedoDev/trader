@@ -288,3 +288,10 @@ Registro cronológico y persistente de todas las operaciones realizadas sobre la
 - Creado [análisis RSI long 4h](file:///c:/Users/gira/Desktop/backtesting/wiki/analisis_rsi_long_4h.md), enlazado desde índice y estrategia conceptual. Registrada divergencia entre wiki y código.
 - Ninguna variante recomendada como ganadora robusta; sin cambios de producción.
 
+
+## [2026-11-04] feature | Tarjeta "Riesgo histórico por tramo" en RSI + VWAP 4h
+
+- Idea adaptada de `trader-timemachine` (Jakeschincariol/day-trader-skill): acierto frente al acierto mínimo para no perder (1/(1+R)), sustituyendo R por ganancia media / pérdida media porque la regla no tiene stop ni objetivo. El remuestreo Monte Carlo de velas sueltas se descartó porque destruye el régimen VWAP(1000) en el que se basa la ventaja.
+- `computeTrancheRisk` (js/strategy-rsi.js) mide por tramo, desde el 3 nov 2021, con las mismas velas 4h de Binance: margen sobre el acierto mínimo, caída máxima desde la entrada (MAE) mediana/p90/peor, días típicos y estado del tramo abierto. El historial largo se descarga una sola vez por sesión.
+- Datos: superficial (vuelve > 35) 68 ops, 68 % acierto, margen 14,6 pts, peor caída −24,2 %; <26 y <22 tienen márgenes de ~54 pts.
+- Estudio del tramo superficial (5 ventanas, paridad exacta con la app): 1.120 variantes de nivel/salida/filtro. Ninguna mejora más de ~1 pt/año de media; quitar el tramo da +16,2 % frente a +14,0 % de media con el mismo peor año, pero con ~13,6 operaciones/año menos. Sin cambios en la regla.

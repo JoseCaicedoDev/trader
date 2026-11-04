@@ -130,6 +130,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (config.showRsi) {
       root.querySelector('.chk-rsi-row').classList.remove('hidden');
       root.querySelector('.rsi-analysis').classList.remove('hidden');
+      root.querySelector('.rsi-risk').classList.remove('hidden');
       root.querySelector('.chk-ema-row').classList.add('hidden');
       root.querySelector('.lower-chart-wrap').classList.remove('hidden');
       // The price chart normally fills the panel on desktop; share the height with the RSI chart.
@@ -269,7 +270,10 @@ function renderBacktest(view, candles) {
   view.metricsPanel.update(res, INITIAL_CAPITAL);
   view.tradesTable.render(res.trades, res.eventLabels);
   view.signalPanel.update(res.currentState);
-  if (res.rsiStats) renderRsiAnalysis(view.root, res.rsiStats);
+  if (res.rsiStats) {
+    renderRsiAnalysis(view.root, res.rsiStats);
+    updateRsiRisk(view, candles);
+  }
   const lowerTitle = view.root.querySelector('.lower-chart-title');
   if (lowerTitle && view.config.showRsi) {
     const p = view.config.strategyParams;
@@ -301,6 +305,83 @@ function renderRsiAnalysis(root, s) {
       `Ganancia media ${s.winners ? colored(s.avgWinPct) : '—'} · Pérdida media ${s.losers ? colored(s.avgLossPct) : 'ninguna'}<br>` +
       `Mejor ${colored(s.bestPct)} · Peor ${colored(s.worstPct)}<br>` +
       `Comprar y mantener BTC en el mismo periodo: ${colored(s.buyHoldPct)}`;
+}
+
+// "Riesgo histórico por tramo" card. The long Binance 4h history (from RSI_RISK_HISTORY_START, about
+// a dozen paged requests) is fetched once and cached on the view; each later render only merges in
+// the tab's freshly loaded candles, so a new closed candle updates the card without refetching.
+async function updateRsiRisk(view, candles) {
+  const card = view.root.querySelector('.rsi-risk');
+  if (!card) return;
+  try {
+    if (!view.riskHistory) {
+      view.riskHistory = fetchBinanceKlinesSince(view.config.symbol, view.config.timeframe, RSI_RISK_HISTORY_START)
+        .then(raw => raw.map(c => ({
+          time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4], volume: +c[5]
+        })));
+    }
+    const history = await view.riskHistory;
+    const byTime = new Map(history.map(c => [c.time, c]));
+    for (const c of candles) byTime.set(c.time, c);
+    const data = [...byTime.values()].sort((a, b) => a.time - b.time);
+    const p = view.config.strategyParams;
+    const bt = runRsiZoneStrategy(data, { ...p, analysisStart: RSI_RISK_ANALYSIS_START }, INITIAL_CAPITAL, FEE_PERCENT);
+    const names = p.entryMode === 'tranches3'
+      ? [`Vuelve > ${p.shallowLevel}`, `Cruza < ${p.scaleLevels[0]}`, `Cruza < ${p.scaleLevels[1]}`]
+      : p.entryMode === 'scaled' ? [`Cruza < ${p.scaleLevels[0]}`, `Cruza < ${p.scaleLevels[1]}`] : [`Cruza < ${p.entryLevel}`];
+    renderRsiRisk(card, computeTrancheRisk(data, bt, names), RSI_RISK_ANALYSIS_START / 1000, data[data.length - 1].time);
+  } catch (error) {
+    console.error(error);
+    view.riskHistory = null; // retry on the next render
+    card.querySelector('.rsi-risk-range').textContent = 'No se pudo cargar el historial de Binance.';
+  }
+}
+
+function renderRsiRisk(card, rows, from, to) {
+  const fmtDate = t => new Date(t * 1000).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const pct = (v, d = 1) => v === null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(d)}%`;
+  const tone = v => v === null ? 'text-gray-300' : v >= 0 ? 'text-neon-emerald' : 'text-neon-rose';
+  const cushionTone = c => c === null ? 'text-gray-300' : c < 10 ? 'text-neon-rose' : c < 25 ? 'text-amber-300' : 'text-neon-emerald';
+  const total = rows.reduce((s, r) => s + r.trades, 0);
+  card.querySelector('.rsi-risk-range').textContent =
+    `${fmtDate(from)} → ${fmtDate(to)} · ${total} tramos cerrados · velas 4h de Binance`;
+  card.querySelector('.rsi-risk-body').innerHTML = rows.map(r => {
+    const openLine = r.open
+      ? `<div class="mt-1.5 pt-1.5 border-t border-white/5 text-[11px] leading-4">
+           <span class="text-neon-purple font-semibold">Abierto</span> desde ${fmtDate(r.open.entryTime)} (${r.open.days.toFixed(1)} d):
+           ahora <span class="${tone(r.open.nowPct)} font-semibold">${pct(r.open.nowPct, 2)}</span>,
+           peor caída hasta ahora <span class="text-neon-rose font-semibold">${pct(r.open.maePct)}</span>.
+           ${r.trades ? `${r.open.deeperBefore} de ${r.trades} tramos pasados cayeron más.` : ''}
+         </div>`
+      : '';
+    if (!r.trades) {
+      return `<div class="bg-black/30 rounded-lg p-2.5 border border-white/5 text-xs">
+                <span class="text-white font-semibold">${r.name}</span> <span class="text-gray-500">· sin tramos cerrados</span>${openLine}
+              </div>`;
+    }
+    return `<div class="bg-black/30 rounded-lg p-2.5 border border-white/5 text-xs">
+      <div class="flex items-baseline justify-between gap-2">
+        <span class="text-white font-semibold">${r.name}</span>
+        <span class="text-[11px] text-gray-500">${r.trades} ops · mediana ${r.medianDays.toFixed(1)} d</span>
+      </div>
+      <div class="grid grid-cols-3 gap-1.5 mt-1.5 tabular-nums">
+        <div class="flex flex-col"><span class="text-[10px] text-gray-500">Acierto / mínimo</span>
+          <span class="text-gray-200">${r.winRate.toFixed(0)}% / ${r.breakEven === null ? '—' : r.breakEven.toFixed(0) + '%'}</span></div>
+        <div class="flex flex-col"><span class="text-[10px] text-gray-500">Margen</span>
+          <span class="${cushionTone(r.cushion)} font-semibold">${r.cushion === null ? 'sin pérdidas' : r.cushion.toFixed(1) + ' pts'}</span></div>
+        <div class="flex flex-col"><span class="text-[10px] text-gray-500">Gan. / pérd. media</span>
+          <span><span class="${tone(r.avgWin)}">${pct(r.avgWin)}</span> / <span class="${tone(r.avgLoss)}">${pct(r.avgLoss)}</span></span></div>
+        <div class="flex flex-col"><span class="text-[10px] text-gray-500">Caída típica</span>
+          <span class="text-neon-rose">${pct(r.maeMedian)}</span></div>
+        <div class="flex flex-col"><span class="text-[10px] text-gray-500">Caída 1 de cada 10</span>
+          <span class="text-neon-rose">${pct(r.maeP90)}</span></div>
+        <div class="flex flex-col"><span class="text-[10px] text-gray-500">Peor caída</span>
+          <span class="text-neon-rose font-semibold">${pct(r.maeWorst)}</span></div>
+      </div>
+      <div class="text-[11px] text-gray-500 mt-1">${r.winnersDeepDip} de ${r.winners} ganadoras estuvieron más de −5% abajo antes de ganar.</div>
+      ${openLine}
+    </div>`;
+  }).join('');
 }
 
 // Live WebSocket feed manager

@@ -211,6 +211,17 @@
           <div class="rsi-trade-summary text-xs leading-5 text-gray-400 bg-black/30 rounded-lg p-3 border border-white/5">—</div>
         </section>
 
+        <!-- Historical risk per tranche since Nov 2021 (Shown only for the RSI zones view) -->
+        <section class="rsi-risk glass-card rounded-xl p-4 flex flex-col gap-3 hidden">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-neon-purple"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <h2 class="text-xs font-bold tracking-tight text-white uppercase">Riesgo histórico por tramo</h2>
+          </div>
+          <span class="rsi-risk-range text-[11px] text-gray-500 font-medium">Cargando historial de Binance…</span>
+          <div class="rsi-risk-body grid gap-2"></div>
+          <span class="text-[11px] text-gray-500 leading-4">Sin stop: la caída es lo que el tramo tuvo que aguantar antes de que la salida lo liberara. Margen = acierto real − acierto mínimo para no perder (pérdida media ÷ (ganancia media + pérdida media)).</span>
+        </section>
+
         <!-- Metrics Summaries -->
         <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3">
           <div class="glass-card rounded-xl p-4 flex flex-col gap-1.5">

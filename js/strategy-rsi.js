@@ -190,3 +190,80 @@ function mergeTranches(books, initialCapital) {
     totalTrades: trades.filter(t => t.type === 'SELL').length
   };
 }
+
+// Historical risk of each tranche: the "how bad can it get" view a rule without a stop needs.
+// Run on the same Binance 4h candles as the tab, over a longer history (RSI_RISK_HISTORY_START), it
+// pairs every BUY with its SELL per book and measures:
+//   - win rate against the break-even win rate |avgLoss| / (avgWin + |avgLoss|) and the gap between
+//     them (the cushion): with no fixed target, the average win and loss play the role of R;
+//   - adverse excursion (MAE): the lowest low between entry and exit relative to the entry price,
+//     i.e. how deep each trade went underwater before the exit rule released it;
+//   - holding time in days.
+// For a tranche that is still open it also reports the current drawdown and the deepest one so far,
+// and how many past trades of that tranche went deeper (the context for sitting through a dip).
+// `bt` is a runRsiZoneStrategy result on `data`. Books are named tramo1..N in entry-level order.
+function computeTrancheRisk(data, bt, bookNames) {
+  const quantile = (arr, q) => {
+    if (!arr.length) return null;
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.floor(q * s.length))];
+  };
+  const lowestLow = (from, to) => {
+    let lo = Infinity;
+    for (let i = from; i <= to; i++) lo = Math.min(lo, data[i].low);
+    return lo;
+  };
+  const last = data.length - 1;
+  const books = {};
+  const open = {};
+  for (const t of bt.trades) {
+    const b = t.book || 'tramo1';
+    books[b] = books[b] || { closed: [], open: null };
+    if (t.type === 'BUY') { open[b] = t; continue; }
+    const e = open[b];
+    if (!e) continue;
+    delete open[b];
+    books[b].closed.push({
+      pnl: t.pnlPercent,
+      mae: (lowestLow(e.index + 1, t.index) / e.price - 1) * 100,
+      days: (t.index - e.index) / 6
+    });
+  }
+  for (const [b, e] of Object.entries(open)) {
+    books[b] = books[b] || { closed: [], open: null };
+    books[b].open = {
+      entryTime: data[e.index].time,
+      entryPrice: e.price,
+      nowPct: (data[last].close / e.price - 1) * 100,
+      maePct: e.index < last ? (lowestLow(e.index + 1, last) / e.price - 1) * 100 : 0,
+      days: (last - e.index) / 6
+    };
+  }
+
+  return Object.keys(books).sort().map((b, k) => {
+    const { closed, open: o } = books[b];
+    const wins = closed.filter(x => x.pnl > 0), losses = closed.filter(x => x.pnl <= 0);
+    const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+    const avgWin = mean(wins.map(x => x.pnl)), avgLoss = mean(losses.map(x => x.pnl));
+    const winRate = closed.length ? wins.length / closed.length * 100 : null;
+    const breakEven = avgWin !== null && avgLoss !== null ? -avgLoss / (avgWin - avgLoss) * 100 : null;
+    const maes = closed.map(x => x.mae);
+    return {
+      book: b,
+      name: (bookNames && bookNames[k]) || b,
+      trades: closed.length,
+      winRate,
+      avgWin,
+      avgLoss,
+      breakEven,
+      cushion: winRate !== null && breakEven !== null ? winRate - breakEven : null,
+      medianDays: quantile(closed.map(x => x.days), 0.5),
+      maeMedian: quantile(maes, 0.5),
+      maeP90: quantile(maes, 0.1), // 10th percentile of a negative number = the deep 10% of trades
+      maeWorst: maes.length ? Math.min(...maes) : null,
+      winnersDeepDip: wins.filter(x => x.mae < -5).length,
+      winners: wins.length,
+      open: o ? { ...o, deeperBefore: maes.filter(m => m < o.maePct).length } : null
+    };
+  });
+}

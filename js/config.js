@@ -233,3 +233,10 @@ const RSI_STRATEGY_PARAMS = {
 };
 // Warm-up: VWAP(1000) plus its 30-candle slope needs ~172 days of 4h candles before the first trade.
 const RSI_HISTORY_START = RSI_STRATEGY_PARAMS.analysisStart - 200 * 86400000;
+
+// "Riesgo histórico por tramo" card: the same rule on the same Binance 4h candles, measured from the
+// start of the 5-window validation (3 Nov 2021) instead of the tab's trailing year, so each tranche
+// has enough closed trades for its excursion percentiles to mean something. Candles are fetched from
+// 200 days earlier to warm up RSI and VWAP(1000), as for the tab itself.
+const RSI_RISK_ANALYSIS_START = Date.UTC(2021, 10, 3);
+const RSI_RISK_HISTORY_START = RSI_RISK_ANALYSIS_START - 200 * 86400000;
