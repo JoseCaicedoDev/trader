@@ -44,6 +44,8 @@ class ChartManager {
    */
   render(candles, results) {
     this.destroy(); // Ensure any previous instance is fully cleaned up
+    // Strategies that ask for it get the short, merged markers (see compactMarkers).
+    this.compact = Boolean(results.compactMarkers);
 
     const chartOptions = {
       layout: {
@@ -228,18 +230,7 @@ class ChartManager {
     });
 
     if (this.lowerSeries && results.trades) {
-      const markers = [];
-      results.trades.forEach(t => {
-        if (t.type === 'BUY') {
-          markers.push({ time: t.time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'Compra' });
-        } else if (t.type === 'SELL') {
-          markers.push({
-            time: t.time, position: 'aboveBar', color: t.pnl >= 0 ? '#00e676' : '#ff1744', shape: 'arrowDown',
-            text: (t.pnlPercent >= 0 ? '+' : '') + t.pnlPercent.toFixed(1) + '%'
-          });
-        }
-      });
-      this.lowerSeries.setMarkers(markers);
+      this.lowerSeries.setMarkers(this.compactMarkers(results.trades));
     }
 
     // Mirror the crosshair so the RSI value of any candle can be read while hovering the price.
@@ -293,8 +284,41 @@ class ChartManager {
     }
   }
 
+  /**
+   * Compact long-only markers: "Compra" on entries and the % on exits, one marker per candle. Trades of
+   * several books (tranches) on the same candle are merged ("×n", average %) instead of stacked.
+   */
+  compactMarkers(trades) {
+    const groups = new Map();
+    for (const t of trades) {
+      if (t.type !== 'BUY' && t.type !== 'SELL') continue;
+      const key = `${t.time}|${t.type}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(t);
+    }
+    const markers = [];
+    for (const list of groups.values()) {
+      const t = list[0];
+      const times = list.length > 1 ? ` ×${list.length}` : '';
+      if (t.type === 'BUY') {
+        markers.push({ time: t.time, position: 'belowBar', color: '#00e676', shape: 'arrowUp', text: 'Compra' + times });
+      } else {
+        const pct = list.reduce((s, x) => s + x.pnlPercent, 0) / list.length;
+        markers.push({
+          time: t.time, position: 'aboveBar', color: pct >= 0 ? '#00e676' : '#ff1744', shape: 'arrowDown',
+          text: (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%' + times
+        });
+      }
+    }
+    return markers.sort((a, b) => a.time - b.time);
+  }
+
   renderMarkers(trades, eventLabels) {
     if (!trades) return;
+    if (this.compact) {
+      this.candlestickSeries.setMarkers(this.compactMarkers(trades));
+      return;
+    }
     const markers = [];
     trades.forEach(t => {
       // A trade may carry its own label (the counter book shares candle indices with the strategy's

@@ -116,6 +116,9 @@ function runRsiZoneStrategy(data, params, initialCapital, feePercent) {
     buyHoldPct: firstIdx < n ? (data[n - 1].close / data[firstIdx].close - 1) * 100 : 0
   };
 
+  // Long-only tranches: short "Compra" / "+x%" chart markers, merged per candle.
+  backtest.compactMarkers = true;
+
   const exitLevel = exitMode === 'rsi' ? exitRsi : exitRsiCap;
   const entryLevels = entryMode === 'tranches3' ? [shallowLevel, ...scaleLevels]
     : entryMode === 'scaled' ? scaleLevels : [entryLevel];
